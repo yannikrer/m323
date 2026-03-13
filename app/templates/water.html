@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>💧 Water Tracker</h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">Heute getrunken</div>
+            <div class="value" id="todayWater">0 ml</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Tagesziel</div>
+            <div class="value" id="goalWater">2000 ml</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Noch zu trinken</div>
+            <div class="value" id="remainingWater">2000 ml</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Fortschritt</div>
+            <div class="value" id="progressPercent">0%</div>
+        </div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="waterProgress" style="width: 0%">0%</div>
+    </div>
+
+    <div style="margin-top: 30px;">
+        <h3>Schnell hinzufügen</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+            <button class="btn" onclick="addWater(250)">+ 250ml (Glas)</button>
+            <button class="btn" onclick="addWater(500)">+ 500ml (Flasche)</button>
+            <button class="btn" onclick="addWater(750)">+ 750ml</button>
+            <button class="btn" onclick="addWater(1000)">+ 1000ml (1L)</button>
+        </div>
+    </div>
+
+    <form id="waterForm" style="margin-top: 30px;">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Menge (ml)</label>
+                <input type="number" id="amount" step="50" min="50" required>
+            </div>
+            <div class="form-group">
+                <label>Tagesziel (ml)</label>
+                <input type="number" id="goalInput" value="2000" step="100" min="100">
+            </div>
+        </div>
+        <button type="submit" class="btn">Manuell hinzufügen</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Letzte 7 Tage</h2>
+    <table class="table" id="weekTable">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Getrunken</th>
+                <th>Ziel</th>
+                <th>Fortschritt</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="weekBody">
+        </tbody>
+    </table>
+</div>
+
+<script>
+(function() {
+    const API_URL = '/water';
+    let currentEntryId = null;
+
+    async function loadTodayData() {
+        try {
+            const response = await fetch(API_URL + '/today');
+            const data = await response.json();
+            
+            currentEntryId = data.id;
+            
+            document.getElementById('todayWater').textContent = data.menge_ml + ' ml';
+            document.getElementById('goalWater').textContent = data.ziel_ml + ' ml';
+            document.getElementById('remainingWater').textContent = Math.max(0, data.ziel_ml - data.menge_ml) + ' ml';
+            document.getElementById('progressPercent').textContent = data.prozent + '%';
+            document.getElementById('goalInput').value = data.ziel_ml;
+
+            const progressBar = document.getElementById('waterProgress');
+            const progress = Math.min(data.prozent, 100);
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress + '%';
+
+            if (data.prozent >= 100) {
+                progressBar.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+            } else {
+                progressBar.style.background = 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)';
+            }
+        } catch (error) {
+            console.error('Error loading today data:', error);
+        }
+    }
+
+    async function loadWeekData() {
+        try {
+            const response = await fetch(API_URL + '/stats/week');
+            const data = await response.json();
+            
+            const tbody = document.getElementById('weekBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(function(day) {
+                const row = tbody.insertRow();
+                const statusEmoji = day.erreicht ? '✅' : '❌';
+                row.innerHTML = '<td>' + day.datum + '</td>' +
+                               '<td>' + day.menge_ml + ' ml</td>' +
+                               '<td>' + day.ziel_ml + ' ml</td>' +
+                               '<td>' + day.prozent + '%</td>' +
+                               '<td>' + statusEmoji + '</td>';
+            });
+        } catch (error) {
+            console.error('Error loading week data:', error);
+        }
+    }
+
+    window.addWater = async function(amount) {
+        try {
+            const response = await fetch(API_URL + '/today/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ menge_ml: amount })
+            });
+
+            if (response.ok) {
+                loadTodayData();
+                loadWeekData();
+            }
+        } catch (error) {
+            console.error('Error adding water:', error);
+            alert('Fehler beim Hinzufügen von Wasser');
+        }
+    };
+
+    document.getElementById('waterForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const amount = parseInt(document.getElementById('amount').value);
+        await window.addWater(amount);
+        
+        document.getElementById('amount').value = '';
+    });
+
+    document.getElementById('goalInput').addEventListener('change', async function(e) {
+        const newGoal = parseInt(e.target.value);
+        
+        if (!currentEntryId) return;
+
+        try {
+            const response = await fetch(API_URL + '/' + currentEntryId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ziel_ml: newGoal })
+            });
+
+            if (response.ok) {
+                loadTodayData();
+            }
+        } catch (error) {
+            console.error('Error updating goal:', error);
+        }
+    });
+
+    loadTodayData();
+    loadWeekData();
+})();
+</script>
+{% endblock %}

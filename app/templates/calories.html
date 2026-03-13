@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>🍽️ Calorie Tracker</h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">Heute</div>
+            <div class="value" id="todayCalories">0 kcal</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Protein</div>
+            <div class="value" id="todayProtein">0 g</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Kohlenhydrate</div>
+            <div class="value" id="todayCarbs">0 g</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Fett</div>
+            <div class="value" id="todayFat">0 g</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Tagesziel (kcal)</label>
+        <input type="number" id="calorieGoal" value="2000" min="0">
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="calorieProgress" style="width: 0%">0%</div>
+    </div>
+
+    <form id="calorieForm">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Datum</label>
+                <input type="date" id="date" required>
+            </div>
+            <div class="form-group">
+                <label>Mahlzeit</label>
+                <select id="meal" required>
+                    <option value="">Wählen...</option>
+                    <option value="Frühstück">Frühstück</option>
+                    <option value="Mittagessen">Mittagessen</option>
+                    <option value="Abendessen">Abendessen</option>
+                    <option value="Snack">Snack</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Lebensmittel</label>
+                <input type="text" id="food" required>
+            </div>
+            <div class="form-group">
+                <label>Menge (g)</label>
+                <input type="number" id="amount" step="0.1" min="0.1" required>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Kalorien</label>
+                <input type="number" id="calories" step="0.1" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Protein (g)</label>
+                <input type="number" id="protein" step="0.1" min="0" value="0">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Kohlenhydrate (g)</label>
+                <input type="number" id="carbs" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+                <label>Fett (g)</label>
+                <input type="number" id="fat" step="0.1" min="0" value="0">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notizen</label>
+            <textarea id="note" rows="2"></textarea>
+        </div>
+
+        <button type="submit" class="btn">Eintrag hinzufügen</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Heutige Einträge</h2>
+    <table class="table" id="entriesTable">
+        <thead>
+            <tr>
+                <th>Mahlzeit</th>
+                <th>Lebensmittel</th>
+                <th>Menge</th>
+                <th>Kalorien</th>
+                <th>P/C/F</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody id="entriesBody">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const API_URL = '/calories';
+
+    document.getElementById('date').valueAsDate = new Date();
+
+    async function loadTodayData() {
+        try {
+            const goal = parseInt(document.getElementById('calorieGoal').value);
+            const response = await fetch(`${API_URL}/today`);
+            const data = await response.json();
+            
+            document.getElementById('todayCalories').textContent = `${data.total_calories} kcal`;
+            document.getElementById('todayProtein').textContent = `${data.total_protein} g`;
+            document.getElementById('todayCarbs').textContent = `${data.total_carbs} g`;
+            document.getElementById('todayFat').textContent = `${data.total_fat} g`;
+
+            const progress = Math.min((data.total_calories / goal) * 100, 100);
+            const progressBar = document.getElementById('calorieProgress');
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${Math.round(progress)}%`;
+
+            const tbody = document.getElementById('entriesBody');
+            tbody.innerHTML = '';
+            
+            data.meals.forEach(entry => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${entry.meal}</td>
+                    <td>${entry.food}</td>
+                    <td>${entry.amount}g</td>
+                    <td>${entry.calories} kcal</td>
+                    <td>${entry.protein}/${entry.carbs}/${entry.fat}g</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Löschen</button>
+                    </td>
+                `;
+            });
+        } catch (error) {
+            console.error('Error loading data:', error);
+        }
+    }
+
+    document.getElementById('calorieForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            date: document.getElementById('date').value,
+            meal: document.getElementById('meal').value,
+            food: document.getElementById('food').value,
+            amount: parseFloat(document.getElementById('amount').value),
+            calories: parseFloat(document.getElementById('calories').value),
+            protein: parseFloat(document.getElementById('protein').value),
+            carbs: parseFloat(document.getElementById('carbs').value),
+            fat: parseFloat(document.getElementById('fat').value),
+            note: document.getElementById('note').value || null
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Eintrag erfolgreich hinzugefügt!');
+                document.getElementById('calorieForm').reset();
+                document.getElementById('date').valueAsDate = new Date();
+                loadTodayData();
+            }
+        } catch (error) {
+            alert('Fehler beim Hinzufügen');
+            console.error(error);
+        }
+    });
+
+    async function deleteEntry(id) {
+        if (!confirm('Eintrag wirklich löschen?')) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                loadTodayData();
+            }
+        } catch (error) {
+            console.error('Error deleting entry:', error);
+        }
+    }
+
+    document.getElementById('calorieGoal').addEventListener('change', loadTodayData);
+
+    loadTodayData();
+</script>
+{% endblock %}

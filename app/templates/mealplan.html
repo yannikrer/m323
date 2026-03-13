@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>📋 Meal Plan Generator</h2>
+    
+    <form id="mealPlanForm">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Alter (Jahre)</label>
+                <input type="number" id="age" min="1" max="120" required>
+            </div>
+            <div class="form-group">
+                <label>Größe (cm)</label>
+                <input type="number" id="height" min="100" max="250" step="0.1" required>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Gewicht (kg)</label>
+                <input type="number" id="weight" min="30" max="300" step="0.1" required>
+            </div>
+            <div class="form-group">
+                <label>BMI (wird berechnet)</label>
+                <input type="text" id="bmi" readonly style="background: #e9ecef;">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Essverhalten</label>
+                <select id="eatingHabit" required>
+                    <option value="">Wählen...</option>
+                    <option value="Alles">Alles</option>
+                    <option value="Vegetarisch">Vegetarisch</option>
+                    <option value="Vegan">Vegan</option>
+                    <option value="Pescetarisch">Pescetarisch</option>
+                    <option value="Low-Carb">Low-Carb</option>
+                    <option value="Keto">Keto</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ziel</label>
+                <select id="goal" required>
+                    <option value="Abnehmen">Abnehmen</option>
+                    <option value="Zunehmen">Zunehmen</option>
+                    <option value="Muskelaufbau">Muskelaufbau</option>
+                    <option value="Ausgewogen" selected>Ausgewogen</option>
+                    <option value="Gesund leben">Gesund leben</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Anzahl Tage</label>
+                <input type="number" id="days" min="1" max="30" value="7" required>
+            </div>
+            <div class="form-group">
+                <label>Lieblingsessen (mit Komma trennen)</label>
+                <input type="text" id="favoriteFoods" placeholder="z.B. Pasta, Hähnchen, Salat" required>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn" id="generateBtn">
+                🎯 Plan erstellen
+            </button>
+            <button type="button" class="btn btn-secondary" id="streamBtn">
+                ⚡ Live-Streaming
+            </button>
+        </div>
+    </form>
+
+    <div id="loadingDiv" style="display: none; margin-top: 20px; text-align: center;">
+        <div style="display: inline-block; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 10px; color: #667eea; font-weight: bold;">Erstelle deinen Ernährungsplan...</p>
+    </div>
+
+    <div id="resultDiv" style="display: none; margin-top: 30px;">
+        <h3>Dein Ernährungsplan</h3>
+        <div id="planContent" style="background: white; padding: 20px; border-radius: 10px; white-space: pre-wrap; line-height: 1.8; border: 2px solid #667eea;"></div>
+        <button class="btn" onclick="downloadPlan()" style="margin-top: 15px;">📥 Als Text herunterladen</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Gespeicherte Pläne</h2>
+    <table class="table" id="plansTable">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Alter</th>
+                <th>Ziel</th>
+                <th>Essverhalten</th>
+                <th>Tage</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody id="plansBody">
+        </tbody>
+    </table>
+</div>
+
+<div id="planModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; overflow: auto;">
+    <div style="background: white; margin: 50px auto; max-width: 900px; border-radius: 20px; padding: 30px; position: relative;">
+        <button onclick="closeModal()" style="position: absolute; top: 20px; right: 20px; background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 18px;">✕</button>
+        <h2 id="modalTitle">Ernährungsplan</h2>
+        <div id="modalContent" style="white-space: pre-wrap; line-height: 1.8; margin-top: 20px;"></div>
+        <button class="btn" onclick="downloadModalPlan()" style="margin-top: 20px;">📥 Herunterladen</button>
+    </div>
+</div>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+const API_URL = '/mealplan';
+let currentPlanText = '';
+let modalPlanText = '';
+
+function calculateBMI() {
+    const height = parseFloat(document.getElementById('height').value);
+    const weight = parseFloat(document.getElementById('weight').value);
+    
+    if (height && weight) {
+        const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+        document.getElementById('bmi').value = bmi;
+    }
+}
+
+document.getElementById('height').addEventListener('input', calculateBMI);
+document.getElementById('weight').addEventListener('input', calculateBMI);
+
+document.getElementById('mealPlanForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const favFoods = document.getElementById('favoriteFoods').value.split(',').map(f => f.trim());
+    
+    const data = {
+        age: parseInt(document.getElementById('age').value),
+        height: parseFloat(document.getElementById('height').value),
+        weight: parseFloat(document.getElementById('weight').value),
+        eating_habit: document.getElementById('eatingHabit').value,
+        favorite_foods: favFoods,
+        goal: document.getElementById('goal').value,
+        days: parseInt(document.getElementById('days').value)
+    };
+
+    document.getElementById('loadingDiv').style.display = 'block';
+    document.getElementById('resultDiv').style.display = 'none';
+    document.getElementById('generateBtn').disabled = true;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            currentPlanText = result.plan;
+            document.getElementById('planContent').textContent = result.plan;
+            document.getElementById('resultDiv').style.display = 'block';
+            loadPlans();
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.detail);
+        }
+    } catch (error) {
+        alert('Fehler beim Erstellen des Plans: ' + error.message);
+    } finally {
+        document.getElementById('loadingDiv').style.display = 'none';
+        document.getElementById('generateBtn').disabled = false;
+    }
+});
+
+document.getElementById('streamBtn').addEventListener('click', async function() {
+    const favFoods = document.getElementById('favoriteFoods').value.split(',').map(f => f.trim());
+    
+    const data = {
+        age: parseInt(document.getElementById('age').value),
+        height: parseFloat(document.getElementById('height').value),
+        weight: parseFloat(document.getElementById('weight').value),
+        eating_habit: document.getElementById('eatingHabit').value,
+        favorite_foods: favFoods,
+        goal: document.getElementById('goal').value,
+        days: parseInt(document.getElementById('days').value)
+    };
+
+    document.getElementById('loadingDiv').style.display = 'block';
+    document.getElementById('resultDiv').style.display = 'block';
+    document.getElementById('planContent').textContent = '';
+    document.getElementById('streamBtn').disabled = true;
+    currentPlanText = '';
+
+    try {
+        const response = await fetch(API_URL + '/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            currentPlanText += chunk;
+            document.getElementById('planContent').textContent = currentPlanText;
+            document.getElementById('planContent').scrollTop = document.getElementById('planContent').scrollHeight;
+        }
+    } catch (error) {
+        alert('Streaming-Fehler: ' + error.message);
+    } finally {
+        document.getElementById('loadingDiv').style.display = 'none';
+        document.getElementById('streamBtn').disabled = false;
+    }
+});
+
+async function loadPlans() {
+    try {
+        const response = await fetch(API_URL);
+        const plans = await response.json();
+        
+        const tbody = document.getElementById('plansBody');
+        tbody.innerHTML = '';
+        
+        plans.forEach(function(plan) {
+            const row = tbody.insertRow();
+            row.innerHTML = '<td>' + plan.date + '</td>' +
+                           '<td>' + plan.age + ' Jahre</td>' +
+                           '<td>' + plan.goal + '</td>' +
+                           '<td>' + plan.eating_habit + '</td>' +
+                           '<td>' + plan.days + ' Tage</td>' +
+                           '<td>' +
+                           '<button class="btn" onclick="viewPlan(' + plan.id + ')">👁️ Ansehen</button> ' +
+                           '<button class="btn btn-danger" onclick="deletePlan(' + plan.id + ')">🗑️ Löschen</button>' +
+                           '</td>';
+        });
+    } catch (error) {
+        console.error('Error loading plans:', error);
+    }
+}
+
+async function viewPlan(id) {
+    try {
+        const response = await fetch(API_URL + '/' + id);
+        const plan = await response.json();
+        
+        modalPlanText = plan.plan;
+        document.getElementById('modalTitle').textContent = 'Ernährungsplan vom ' + plan.date;
+        document.getElementById('modalContent').textContent = plan.plan;
+        document.getElementById('planModal').style.display = 'block';
+    } catch (error) {
+        alert('Fehler beim Laden des Plans');
+    }
+}
+
+function closeModal() {
+    document.getElementById('planModal').style.display = 'none';
+}
+
+async function deletePlan(id) {
+    if (!confirm('Plan wirklich löschen?')) return;
+    
+    try {
+        const response = await fetch(API_URL + '/' + id, { method: 'DELETE' });
+        if (response.ok) {
+            loadPlans();
+        }
+    } catch (error) {
+        alert('Fehler beim Löschen');
+    }
+}
+
+function downloadPlan() {
+    const blob = new Blob([currentPlanText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ernaehrungsplan_' + new Date().toISOString().split('T')[0] + '.txt';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function downloadModalPlan() {
+    const blob = new Blob([modalPlanText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ernaehrungsplan_' + new Date().toISOString().split('T')[0] + '.txt';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('planModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+
+loadPlans();
+</script>
+{% endblock %}

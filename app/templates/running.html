@@ -1,0 +1,203 @@
+    
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>🏃 Running Tracker</h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">Total Distance</div>
+            <div class="value" id="totalDistance">0 km</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Total Sessions</div>
+            <div class="value" id="totalSessions">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Avg Speed</div>
+            <div class="value" id="avgSpeed">0 km/h</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Calories Burned</div>
+            <div class="value" id="totalCalories">0 kcal</div>
+        </div>
+    </div>
+
+    <form id="runningForm">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Datum</label>
+                <input type="date" id="date" required>
+            </div>
+            <div class="form-group">
+                <label>Uhrzeit</label>
+                <input type="time" id="time">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Distanz (km)</label>
+                <input type="number" id="distance" step="0.1" min="0.1" required>
+            </div>
+            <div class="form-group">
+                <label>Dauer (Minuten)</label>
+                <input type="number" id="duration" step="0.1" min="0.1" required>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Route</label>
+                <input type="text" id="route" placeholder="z.B. Park-Runde">
+            </div>
+            <div class="form-group">
+                <label>Wetter</label>
+                <input type="text" id="weather" placeholder="z.B. Sonnig, 20°C">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Herzfrequenz (Durchschnitt)</label>
+                <input type="number" id="heartRate" min="0">
+            </div>
+            <div class="form-group">
+                <label>Gefühl</label>
+                <select id="feeling">
+                    <option value="">Wählen...</option>
+                    <option value="Sehr gut">Sehr gut</option>
+                    <option value="Gut">Gut</option>
+                    <option value="OK">OK</option>
+                    <option value="Müde">Müde</option>
+                    <option value="Erschöpft">Erschöpft</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notizen</label>
+            <textarea id="note" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn">Session hinzufügen</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Letzte Sessions</h2>
+    <table class="table" id="sessionsTable">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Distanz</th>
+                <th>Dauer</th>
+                <th>Geschwindigkeit</th>
+                <th>Kalorien</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody id="sessionsBody">
+        </tbody>
+    </table>
+</div>
+<script>
+    const apiUrl = '/running'
+
+    document.getElementById('date').valueAsDate = new Date();
+
+    async function loadStats() {
+        try {
+            const response = await fetch(`${apiUrl}/stats/week`)
+            const stats = await response.json();
+
+            document.getElementById('totalDistance').textContent = `${stats.total_distance_km} km`;
+            document.getElementById('totalSessions').textContent = stats.total_sessions;
+            document.getElementById('avgSpeed').textContent = `${stats.avg_speed_kmh} km/h`;
+            document.getElementById('totalCalories').textContent = `${stats.total_calories_burned} kcal`;
+        } catch (error){
+            console.error('Error loading stats:' (error))
+        }
+    }
+
+    async function loadSession() {
+        try {
+            const response = await fetch(`${apiUrl}?limit=10`)
+            const session = await response.json();
+            
+            const tbody = document.getElementById('sessionsBody');
+            tbody.innerHTML = '';
+            
+            sessions.forEach(session => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${session.date}</td>
+                    <td>${session.distance_km} km</td>
+                    <td>${session.duration_minutes} min</td>
+                    <td>${session.avg_speed_kmh} km/h</td>
+                    <td>${session.calories_burned} kcal</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteSession(${session.id})">Löschen</button>
+                    </td>
+                `;
+            });
+        } catch (error) {
+            console.error('Error loading sessions:', error);
+        }
+    }
+
+    document.getElementById('runningForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            date: document.getElementById('date').value,
+            time: document.getElementById('time').value || null,
+            distance_km: parseFloat(document.getElementById('distance').value),
+            duration_minutes: parseFloat(document.getElementById('duration').value),
+            heart_rate_avg: document.getElementById('heartRate').value ? parseInt(document.getElementById('heartRate').value) : null,
+            route: document.getElementById('route').value || null,
+            weather: document.getElementById('weather').value || null,
+            feeling: document.getElementById('feeling').value || null,
+            note: document.getElementById('note').value || null
+        };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Session erfolgreich hinzugefügt!');
+                document.getElementById('runningForm').reset();
+                document.getElementById('date').valueAsDate = new Date();
+                loadStats();
+                loadSession();
+            }
+        } catch (error) {
+            alert('Fehler beim Hinzufügen der Session');
+            console.error(error);
+        }
+    });
+
+    async function deleteSession(id) {
+        if (!confirm('Session wirklich löschen?')) return;
+
+        try {
+            const response = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                loadStats();
+                loadSession();
+            }
+        } catch (error) {
+            console.error('Error deleting session:', error);
+        }
+    }
+
+    loadStats();
+    loadSession();
+
+</script>
+{% endblock %}
