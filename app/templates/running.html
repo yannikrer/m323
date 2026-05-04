@@ -1,147 +1,166 @@
-    
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h2>🏃 Running Tracker</h2>
-    
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="label">Total Distance</div>
-            <div class="value" id="totalDistance">0 km</div>
+<div class="max-w-5xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Running Tracker</h1>
+            <p class="text-gray-500 text-sm">Verfolge deine Läufe und Ziele</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Total Sessions</div>
-            <div class="value" id="totalSessions">0</div>
+        <button type="button" onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Session
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Distanz (7 Tage)</p>
+            <p class="text-2xl font-bold text-primary-400 mt-1" id="totalDistance">0 km</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Avg Speed</div>
-            <div class="value" id="avgSpeed">0 km/h</div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Sessions</p>
+            <p class="text-2xl font-bold text-gray-300 mt-1" id="totalSessions">0</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Calories Burned</div>
-            <div class="value" id="totalCalories">0 kcal</div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Durchschnitt</p>
+            <p class="text-2xl font-bold text-yellow-400 mt-1" id="avgSpeed">0 km/h</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Kalorien</p>
+            <p class="text-2xl font-bold text-orange-400 mt-1" id="totalCalories">0 kcal</p>
         </div>
     </div>
 
-    <form id="runningForm">
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Datum</label>
-                <input type="date" id="date" required>
+    <!-- Add Modal -->
+    <div id="addModal" class="modal-overlay hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="modal-content bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold">Neue Session</h3>
+                <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-500 hover:text-white transition" aria-label="Schliessen">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <div class="form-group">
-                <label>Uhrzeit</label>
-                <input type="time" id="time">
-            </div>
+            <form id="runningForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Datum</label>
+                        <input type="date" id="date" required title="Datum" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Uhrzeit</label>
+                        <input type="time" id="time" title="Uhrzeit" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Distanz (km)</label>
+                        <input type="number" id="distance" step="0.1" min="0.1" required placeholder="z.B. 5.0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Dauer (Minuten)</label>
+                        <input type="number" id="duration" step="0.1" min="0.1" required placeholder="z.B. 30" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Route</label>
+                        <input type="text" id="route" placeholder="z.B. Park-Runde" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Wetter</label>
+                        <input type="text" id="weather" placeholder="z.B. Sonnig, 20°C" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Herzfrequenz</label>
+                        <input type="number" id="heartRate" min="0" placeholder="z.B. 140" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Gefuhl</label>
+                        <select id="feeling" title="Gefuhl" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                            <option value="">Wahlen...</option>
+                            <option value="Sehr gut">Sehr gut</option>
+                            <option value="Gut">Gut</option>
+                            <option value="OK">OK</option>
+                            <option value="Mude">Mude</option>
+                            <option value="Erschopft">Erschopft</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Notizen</label>
+                    <textarea id="note" rows="2" placeholder="Optional..." class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 outline-none resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-xl transition">Session hinzufugen</button>
+            </form>
         </div>
+    </div>
 
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Distanz (km)</label>
-                <input type="number" id="distance" step="0.1" min="0.1" required>
-            </div>
-            <div class="form-group">
-                <label>Dauer (Minuten)</label>
-                <input type="number" id="duration" step="0.1" min="0.1" required>
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Route</label>
-                <input type="text" id="route" placeholder="z.B. Park-Runde">
-            </div>
-            <div class="form-group">
-                <label>Wetter</label>
-                <input type="text" id="weather" placeholder="z.B. Sonnig, 20°C">
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Herzfrequenz (Durchschnitt)</label>
-                <input type="number" id="heartRate" min="0">
-            </div>
-            <div class="form-group">
-                <label>Gefühl</label>
-                <select id="feeling">
-                    <option value="">Wählen...</option>
-                    <option value="Sehr gut">Sehr gut</option>
-                    <option value="Gut">Gut</option>
-                    <option value="OK">OK</option>
-                    <option value="Müde">Müde</option>
-                    <option value="Erschöpft">Erschöpft</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Notizen</label>
-            <textarea id="note" rows="3"></textarea>
-        </div>
-
-        <button type="submit" class="btn">Session hinzufügen</button>
-    </form>
+    <!-- Recent Sessions -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-lg font-semibold mb-4">Letzte Sessions</h3>
+        <div id="sessionsList" class="space-y-3"></div>
+        <p id="emptySessions" class="text-gray-600 text-center py-6 hidden">Noch keine Sessions</p>
+    </div>
 </div>
 
-<div class="card">
-    <h2>Letzte Sessions</h2>
-    <table class="table" id="sessionsTable">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>Distanz</th>
-                <th>Dauer</th>
-                <th>Geschwindigkeit</th>
-                <th>Kalorien</th>
-                <th>Aktion</th>
-            </tr>
-        </thead>
-        <tbody id="sessionsBody">
-        </tbody>
-    </table>
-</div>
 <script>
-    const apiUrl = '/running'
-
+    const API_URL = '/running';
     document.getElementById('date').valueAsDate = new Date();
 
     async function loadStats() {
         try {
-            const response = await fetch(`${apiUrl}/stats/week`)
+            const response = await fetch(`${API_URL}/stats/week`);
             const stats = await response.json();
 
             document.getElementById('totalDistance').textContent = `${stats.total_distance_km} km`;
             document.getElementById('totalSessions').textContent = stats.total_sessions;
             document.getElementById('avgSpeed').textContent = `${stats.avg_speed_kmh} km/h`;
             document.getElementById('totalCalories').textContent = `${stats.total_calories_burned} kcal`;
-        } catch (error){
-            console.error('Error loading stats:' (error))
+        } catch (error) {
+            console.error('Error loading stats:', error);
         }
     }
 
-    async function loadSession() {
+    async function loadSessions() {
         try {
-            const response = await fetch(`${apiUrl}?limit=10`)
-            const session = await response.json();
-            
-            const tbody = document.getElementById('sessionsBody');
-            tbody.innerHTML = '';
-            
-            sessions.forEach(session => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${session.date}</td>
-                    <td>${session.distance_km} km</td>
-                    <td>${session.duration_minutes} min</td>
-                    <td>${session.avg_speed_kmh} km/h</td>
-                    <td>${session.calories_burned} kcal</td>
-                    <td>
-                        <button class="btn btn-danger" onclick="deleteSession(${session.id})">Löschen</button>
-                    </td>
-                `;
-            });
+            const response = await fetch(`${API_URL}?limit=10`);
+            const sessions = await response.json();
+
+            const list = document.getElementById('sessionsList');
+            const empty = document.getElementById('emptySessions');
+            list.innerHTML = '';
+
+            if (sessions.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                sessions.forEach(session => {
+                    const feelingEmoji = {
+                        'Sehr gut': '🟢', 'Gut': '🟩', 'OK': '🟡',
+                        'Mude': '🟠', 'Erschopft': '🔴'
+                    };
+                    const emoji = feelingEmoji[session.feeling] || '⚪';
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex items-center justify-between gap-4';
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="text-xl">${emoji}</span>
+                            <div class="min-w-0">
+                                <p class="font-medium">${session.distance_km} km · ${session.duration_minutes} min</p>
+                                <p class="text-sm text-gray-500">${session.date}${session.route ? ' · ' + session.route : ''} · ${session.avg_speed_kmh} km/h · ${session.calories_burned} kcal</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="deleteSession(${session.id})" class="text-gray-600 hover:text-red-400 transition shrink-0" aria-label="Loschen">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>`;
+                    list.appendChild(card);
+                });
+            }
         } catch (error) {
             console.error('Error loading sessions:', error);
         }
@@ -149,7 +168,6 @@
 
     document.getElementById('runningForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const data = {
             date: document.getElementById('date').value,
             time: document.getElementById('time').value || null,
@@ -163,41 +181,35 @@
         };
 
         try {
-            const response = await fetch(apiUrl, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-
             if (response.ok) {
-                alert('Session erfolgreich hinzugefügt!');
                 document.getElementById('runningForm').reset();
                 document.getElementById('date').valueAsDate = new Date();
+                document.getElementById('addModal').classList.add('hidden');
                 loadStats();
-                loadSession();
+                loadSessions();
             }
         } catch (error) {
-            alert('Fehler beim Hinzufügen der Session');
             console.error(error);
         }
     });
 
     async function deleteSession(id) {
-        if (!confirm('Session wirklich löschen?')) return;
-
+        if (!confirm('Session wirklich loschen?')) return;
         try {
-            const response = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
-            if (response.ok) {
-                loadStats();
-                loadSession();
-            }
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            loadStats();
+            loadSessions();
         } catch (error) {
-            console.error('Error deleting session:', error);
+            console.error(error);
         }
     }
 
     loadStats();
-    loadSession();
-
+    loadSessions();
 </script>
 {% endblock %}

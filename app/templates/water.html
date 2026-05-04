@@ -1,72 +1,118 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h2>💧 Water Tracker</h2>
-    
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="label">Heute getrunken</div>
-            <div class="value" id="todayWater">0 ml</div>
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Wasser Tracker</h1>
+            <p class="text-gray-500 text-sm">Trink genug Wasser jeden Tag</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Tagesziel</div>
-            <div class="value" id="goalWater">2000 ml</div>
+        <button type="button" onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Hinzufugen
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Heute getrunken</p>
+            <p class="text-2xl font-bold text-blue-400 mt-1" id="todayWater">0 ml</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Noch zu trinken</div>
-            <div class="value" id="remainingWater">2000 ml</div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Tagesziel</p>
+            <p class="text-2xl font-bold text-gray-300 mt-1" id="goalWater">2000 ml</p>
         </div>
-        <div class="stat-card">
-            <div class="label">Fortschritt</div>
-            <div class="value" id="progressPercent">0%</div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Noch zu trinken</p>
+            <p class="text-2xl font-bold text-orange-400 mt-1" id="remainingWater">2000 ml</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <p class="text-gray-500 text-sm">Fortschritt</p>
+            <p class="text-2xl font-bold text-green-400 mt-1" id="progressPercent">0%</p>
         </div>
     </div>
 
-    <div class="progress-bar">
-        <div class="progress-fill" id="waterProgress" style="width: 0%">0%</div>
-    </div>
-
-    <div style="margin-top: 30px;">
-        <h3>Schnell hinzufügen</h3>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-            <button class="btn" onclick="addWater(250)">+ 250ml (Glas)</button>
-            <button class="btn" onclick="addWater(500)">+ 500ml (Flasche)</button>
-            <button class="btn" onclick="addWater(750)">+ 750ml</button>
-            <button class="btn" onclick="addWater(1000)">+ 1000ml (1L)</button>
+    <!-- Progress Bar -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div class="flex justify-between mb-2">
+            <span class="text-sm text-gray-400">Fortschritt heute</span>
+            <span class="text-sm font-medium" id="progressLabel">0%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-4">
+            <div class="h-4 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-600 to-cyan-400" id="waterProgress"></div>
         </div>
     </div>
 
-    <form id="waterForm" style="margin-top: 30px;">
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Menge (ml)</label>
-                <input type="number" id="amount" step="50" min="50" required>
-            </div>
-            <div class="form-group">
-                <label>Tagesziel (ml)</label>
-                <input type="number" id="goalInput" value="2000" step="100" min="100">
-            </div>
+    <!-- Quick Add -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-lg font-semibold mb-4">Schnell hinzufugen</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button type="button" onclick="addWater(250)" class="bg-gray-800 hover:bg-blue-600/20 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-center transition">
+                <div class="text-2xl mb-1">🥛</div>
+                <div class="font-medium">250ml</div>
+                <div class="text-gray-500 text-xs">Glas</div>
+            </button>
+            <button type="button" onclick="addWater(500)" class="bg-gray-800 hover:bg-blue-600/20 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-center transition">
+                <div class="text-2xl mb-1">🍶</div>
+                <div class="font-medium">500ml</div>
+                <div class="text-gray-500 text-xs">Flasche</div>
+            </button>
+            <button type="button" onclick="addWater(750)" class="bg-gray-800 hover:bg-blue-600/20 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-center transition">
+                <div class="text-2xl mb-1">🫗</div>
+                <div class="font-medium">750ml</div>
+                <div class="text-gray-500 text-xs">Gross</div>
+            </button>
+            <button type="button" onclick="addWater(1000)" class="bg-gray-800 hover:bg-blue-600/20 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-center transition">
+                <div class="text-2xl mb-1">🫙</div>
+                <div class="font-medium">1000ml</div>
+                <div class="text-gray-500 text-xs">1 Liter</div>
+            </button>
         </div>
-        <button type="submit" class="btn">Manuell hinzufügen</button>
-    </form>
+    </div>
+
+    <!-- Week Stats -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-lg font-semibold mb-4">Letzte 7 Tage</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-gray-800">
+                        <th class="pb-3 text-gray-500 font-medium text-sm">Datum</th>
+                        <th class="pb-3 text-gray-500 font-medium text-sm">Getrunken</th>
+                        <th class="pb-3 text-gray-500 font-medium text-sm">Ziel</th>
+                        <th class="pb-3 text-gray-500 font-medium text-sm">Fortschritt</th>
+                        <th class="pb-3 text-gray-500 font-medium text-sm">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="weekBody" class="divide-y divide-gray-800/50"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
-<div class="card">
-    <h2>Letzte 7 Tage</h2>
-    <table class="table" id="weekTable">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>Getrunken</th>
-                <th>Ziel</th>
-                <th>Fortschritt</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody id="weekBody">
-        </tbody>
-    </table>
+<!-- Add Modal -->
+<div id="addModal" class="modal-overlay hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="modal-content bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Wasser hinzufugen</h3>
+            <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')" class="text-gray-500 hover:text-white transition" aria-label="Schliessen">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="waterForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Menge (ml)</label>
+                <input type="number" id="amount" step="50" min="50" placeholder="z.B. 500" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Tagesziel (ml)</label>
+                <input type="number" id="goalInput" value="2000" step="100" min="100" placeholder="2000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition">Hinzufugen</button>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -78,24 +124,23 @@
         try {
             const response = await fetch(API_URL + '/today');
             const data = await response.json();
-            
             currentEntryId = data.id;
-            
+
             document.getElementById('todayWater').textContent = data.menge_ml + ' ml';
             document.getElementById('goalWater').textContent = data.ziel_ml + ' ml';
             document.getElementById('remainingWater').textContent = Math.max(0, data.ziel_ml - data.menge_ml) + ' ml';
             document.getElementById('progressPercent').textContent = data.prozent + '%';
             document.getElementById('goalInput').value = data.ziel_ml;
 
-            const progressBar = document.getElementById('waterProgress');
             const progress = Math.min(data.prozent, 100);
-            progressBar.style.width = progress + '%';
-            progressBar.textContent = progress + '%';
+            const bar = document.getElementById('waterProgress');
+            bar.style.width = progress + '%';
+            document.getElementById('progressLabel').textContent = progress + '%';
 
             if (data.prozent >= 100) {
-                progressBar.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                bar.className = 'h-4 rounded-full transition-all duration-500 bg-gradient-to-r from-green-600 to-emerald-400';
             } else {
-                progressBar.style.background = 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)';
+                bar.className = 'h-4 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-600 to-cyan-400';
             }
         } catch (error) {
             console.error('Error loading today data:', error);
@@ -106,18 +151,20 @@
         try {
             const response = await fetch(API_URL + '/stats/week');
             const data = await response.json();
-            
             const tbody = document.getElementById('weekBody');
             tbody.innerHTML = '';
-            
+
             data.forEach(function(day) {
-                const row = tbody.insertRow();
-                const statusEmoji = day.erreicht ? '✅' : '❌';
-                row.innerHTML = '<td>' + day.datum + '</td>' +
-                               '<td>' + day.menge_ml + ' ml</td>' +
-                               '<td>' + day.ziel_ml + ' ml</td>' +
-                               '<td>' + day.prozent + '%</td>' +
-                               '<td>' + statusEmoji + '</td>';
+                const row = document.createElement('tr');
+                const status = day.erreicht
+                    ? '<span class="px-2 py-1 rounded-lg bg-green-900/50 text-green-400 text-xs font-medium">Erreicht</span>'
+                    : '<span class="px-2 py-1 rounded-lg bg-red-900/50 text-red-400 text-xs font-medium">Verfehlt</span>';
+                row.innerHTML = '<td class="py-3 text-sm">' + day.datum + '</td>' +
+                               '<td class="py-3 text-sm">' + day.menge_ml + ' ml</td>' +
+                               '<td class="py-3 text-sm">' + day.ziel_ml + ' ml</td>' +
+                               '<td class="py-3 text-sm">' + day.prozent + '%</td>' +
+                               '<td class="py-3">' + status + '</td>';
+                tbody.appendChild(row);
             });
         } catch (error) {
             console.error('Error loading week data:', error);
@@ -131,41 +178,33 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ menge_ml: amount })
             });
-
             if (response.ok) {
                 loadTodayData();
                 loadWeekData();
             }
         } catch (error) {
             console.error('Error adding water:', error);
-            alert('Fehler beim Hinzufügen von Wasser');
         }
     };
 
     document.getElementById('waterForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const amount = parseInt(document.getElementById('amount').value);
         await window.addWater(amount);
-        
         document.getElementById('amount').value = '';
+        document.getElementById('addModal').classList.add('hidden');
     });
 
     document.getElementById('goalInput').addEventListener('change', async function(e) {
         const newGoal = parseInt(e.target.value);
-        
         if (!currentEntryId) return;
-
         try {
-            const response = await fetch(API_URL + '/' + currentEntryId, {
+            await fetch(API_URL + '/' + currentEntryId, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ziel_ml: newGoal })
             });
-
-            if (response.ok) {
-                loadTodayData();
-            }
+            loadTodayData();
         } catch (error) {
             console.error('Error updating goal:', error);
         }
