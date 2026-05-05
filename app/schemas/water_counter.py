@@ -2,29 +2,29 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
 
-class WaterEntryCreate(BaseModel):
+class WaterEntryCreate(BaseModel, frozen=True):
     datum: Optional[date] = Field(default_factory=date.today)
     menge_ml: int = Field(gt=0, description="Wassermenge in ml")
     ziel_ml: Optional[int] = Field(default=2000, description="Tagesziel in ml")
 
-class WaterEntryUpdate(BaseModel):
+class WaterEntryUpdate(BaseModel, frozen=True):
     menge_ml: Optional[int] = Field(None, gt=0)
     ziel_ml: Optional[int] = Field(None, gt=0)
 
-class WaterEntryResponse(BaseModel):
+class WaterEntryResponse(BaseModel, frozen=True):
     id: int
     datum: date
     menge_ml: int
     ziel_ml: int
     prozent: float
-    
+
     class Config:
         from_attributes = True
 
-class WaterAddAmount(BaseModel):
-    menge_ml: int = Field(gt=0, description="Hinzuzufügende Wassermenge in ml")
+class WaterAddAmount(BaseModel, frozen=True):
+    menge_ml: int = Field(gt=0, description="Hinzuzufugende Wassermenge in ml")
 
-class WaterStats(BaseModel):
+class WaterStats(BaseModel, frozen=True):
     datum: date
     menge_ml: int
     ziel_ml: int

@@ -1,93 +1,267 @@
-# M323
+# Gym Tracker - Functional Programming Project
 
+A fitness tracking web application built with **FastAPI** and **Python**, following **functional programming principles** throughout the entire codebase.
 
+## Setup
 
-## Getting started
+```bash
+# Install dependencies
+pip install fastapi uvicorn sqlalchemy httpx jinja2 pydantic
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+# Start Ollama (required for meal plan generation)
+ollama serve
+ollama pull llama3.2
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+# Run the application
+uvicorn main:app --reload
 
-## Add your files
+# Open in browser
+# http://127.0.0.1:8000
+```
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Features
+
+- **Water Tracker** - Track daily water intake with quick-add buttons, progress bars, and weekly statistics
+- **Calorie Tracker** - Log meals with automatic macro tracking, configurable nutrition goals (5 diet types), and real-time progress visualization
+- **Meal Plan Generator** - AI-powered personalized nutrition plans using Ollama/Llama3.2, with live streaming, Markdown rendering, and persistent storage
+- **Running Tracker** - Log running sessions with auto-calculated speed/calories, personal bests, goal tracking, and search/filter
+
+## Architecture
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/Brandleeee/m323.git
-git branch -M main
-git push -uf origin main
+m323/
+├── main.py                    # FastAPI app, Jinja2 setup, page routes
+├── app/
+│   ├── database/
+│   │   └── db.py              # SQLAlchemy models, session management
+│   ├── routers/
+│   │   ├── water_counter.py   # Water API (pure functions + DB service)
+│   │   ├── calories.py        # Calorie API (HOFs, curried extractors)
+│   │   ├── planner.py         # Meal plan API (pipe/compose, validators)
+│   │   └── running.py         # Running API (pure calculations, closures)
+│   ├── schemas/
+│   │   ├── water_counter.py   # Frozen Pydantic models (immutable)
+│   │   ├── calories.py        # Frozen Pydantic models with validation
+│   │   ├── planner.py         # Frozen request/response types
+│   │   └── running.py         # Frozen session/stats/goal types
+│   ├── templates/
+│   │   ├── base.html           # Tailwind CSS layout, sidebar nav
+│   │   ├── water.html          # Water tracker frontend
+│   │   ├── calories.html       # Calorie tracker frontend
+│   │   ├── mealplan.html       # Meal plan generator frontend
+│   │   └── running.html        # Running tracker frontend
+│   └── utils/
+│       └── fp.py               # FP utilities (pipe, compose, curry, etc.)
 ```
 
-## Integrate with your tools
+### FP Design Pattern
 
-* [Set up project integrations](https://gitlab.com/Brandleeee/m323/-/settings/integrations)
+Every router follows the same layered architecture:
 
-## Collaborate with your team
+1. **Pure Functions** - No side effects, no mutations. All business logic (calculations, transformations, validations) lives here
+2. **DB Service Functions** - The only place with side effects (database I/O). Isolated at system boundaries
+3. **Route Handlers** - Thin orchestration layer that composes pure functions with DB calls
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```
+Request → Route Handler → Pure Function(s) → DB Service → Response
+```
 
-## Test and Deploy
+## Functional Programming Concepts
 
-Use the built-in continuous integration in GitLab.
+### Pure Functions & No Side Effects
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+All business logic is in pure functions that have no side effects and always produce the same output for the same input:
 
-***
+```python
+def calculate_bmi(weight: float, height_cm: float) -> float:
+    return round(weight / ((height_cm / 100) ** 2), 1)
 
-# Editing this README
+def calculate_speed(distance_km: float, duration_minutes: float) -> float:
+    return 0 if duration_minutes == 0 else round((distance_km / duration_minutes) * 60, 2)
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Side effects (database operations) are isolated in dedicated service functions at system boundaries.
 
-## Suggestions for a good README
+### Immutability
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+All Pydantic schemas use `frozen=True` to enforce immutability at runtime:
 
-## Name
-Choose a self-explaining name for your project.
+```python
+class WaterEntryResponse(BaseModel, frozen=True):
+    id: int
+    datum: date
+    menge_ml: int
+    ziel_ml: int
+    prozent: float
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Data transformations create new objects instead of mutating existing ones:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```python
+def update_entry_fields_pure(entry_data: dict, update: WaterEntryUpdate) -> dict:
+    updates = {k: v for k, v in [("menge_ml", update.menge_ml), ("ziel_ml", update.ziel_ml)] if v is not None}
+    return merge(entry_data, updates)  # Returns new dict, never mutates input
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Higher-Order Functions
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+HOFs are used extensively for data transformations:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```python
+# Curried extractors composed with sum_by
+sum_by(lambda e: e.calories)(entries)
+sum_by(lambda e: e.protein)(entries)
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+# map for transformations
+list(map(create_water_response, entries))
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# flat_map for nested transformations
+flat_map(lambda entry: [{...}], entries)
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Custom HOFs defined in `fp.py`: `pipe`, `compose`, `curry`, `apply_if`, `apply_when_some`, `pick`, `omit`, `filter_by`, `group_by`, `sum_by`, `flat_map`.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Function Composition
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Small, focused functions are composed into pipelines using `pipe` and `compose`:
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```python
+from app.utils.fp import pipe, compose, merge
 
-## License
-For open source projects, say how it is licensed.
+def build_prompt(data: MealPlanRequest) -> str:
+    bmi = calculate_bmi(data.weight, data.height)
+    foods = format_foods(data.favorite_foods)
+    return f"...{bmi}...{foods}...".strip()
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+def create_plan_dict(data: MealPlanRequest, plan_text: str) -> dict:
+    return merge({"plan": plan_text}, {"age": data.age, ...})
+```
+
+### Recursion / Pattern Matching / Closures
+
+**Recursion**: `group_by` uses recursive list processing instead of imperative loops:
+
+```python
+def group_by(key_fn):
+    def _group(items):
+        def recurse(remaining, acc):
+            if not remaining:
+                return acc
+            head, *tail = remaining
+            key = key_fn(head)
+            return recurse(tail, merge(acc, {key: acc.get(key, []) + [head]}))
+        return recurse(items, {})
+    return _group
+```
+
+**Closures**: Validators are closures that capture their check and error message:
+
+```python
+def validator(check, error_msg):
+    def validate(value):
+        if not check(value):
+            raise ValueError(error_msg)
+        return value
+    return validate
+
+valid_age = validator(lambda a: 1 <= a <= 120, "Invalid age")
+valid_meal = validator(lambda m: m in MEAL_TYPES, "Invalid meal type")
+```
+
+### Type Safety
+
+All data shapes are defined with typed, frozen Pydantic models. Field constraints enforce invariants:
+
+```python
+class RunningSessionCreate(BaseModel, frozen=True):
+    distance_km: float = Field(gt=0)
+    duration_minutes: float = Field(gt=0)
+    heart_rate_avg: Optional[int] = None
+```
+
+Union types used for optional fields, generics in FP utilities via TypeVar.
+
+## Testing
+
+Each pure function can be tested independently without any mocks or database setup:
+
+```python
+# test_fp_utils.py
+from app.utils.fp import pipe, curry, merge, group_by, validator
+
+def test_pipe():
+    double = lambda x: x * 2
+    add_one = lambda x: x + 1
+    assert pipe(double, add_one)(3) == 7
+
+def test_curry():
+    add = curry(lambda a, b: a + b)
+    assert add(1)(2) == 3
+    assert add(1, 2) == 3
+
+def test_merge():
+    assert merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+
+def test_group_by():
+    items = [{"t": "a", "v": 1}, {"t": "b", "v": 2}, {"t": "a", "v": 3}]
+    result = group_by(lambda x: x["t"])(items)
+    assert len(result["a"]) == 2
+
+def test_validator():
+    v = validator(lambda x: x > 0, "must be positive")
+    assert v(5) == 5
+    try:
+        v(-1)
+        assert False
+    except ValueError:
+        pass
+
+# test_pure_functions.py
+from app.routers.water_counter import calculate_percentage, is_goal_reached, add_water_pure
+from app.routers.running import calculate_speed, estimate_calories, safe_divide
+from app.routers.planner import calculate_bmi, format_foods, build_prompt
+from app.routers.calories import calculate_macro_percentages, calculate_progress_percent
+
+def test_calculate_percentage():
+    assert calculate_percentage(1000, 2000) == 50.0
+    assert calculate_percentage(500, 0) == 0.0
+
+def test_calculate_speed():
+    assert calculate_speed(10, 60) == 10.0
+    assert calculate_speed(5, 0) == 0
+
+def test_estimate_calories():
+    assert estimate_calories(10) == 600.0
+    assert estimate_calories(10, 70) == 600.0
+
+def test_safe_divide():
+    assert safe_divide(10, 2) == 5.0
+    assert safe_divide(10, 0) == 0
+
+def test_calculate_bmi():
+    assert calculate_bmi(75, 180) == 23.1
+
+def test_add_water_pure():
+    assert add_water_pure(1000, 500) == 1500
+
+def test_calculate_macro_percentages():
+    result = calculate_macro_percentages(100, 100, 50)
+    assert result.protein_percent > 0
+    assert result.carbs_percent > 0
+    assert result.fat_percent > 0
+
+def test_calculate_progress_percent():
+    assert calculate_progress_percent(1000, 2000) == 50.0
+    assert calculate_progress_percent(500, 0) == 0
+
+# Run tests
+# pytest test_fp_utils.py test_pure_functions.py
+```
+
+## Team
+
+| Member | Responsibility |
+|--------|---------------|
+| Amir | Infrastructure, Water Tracker, Running Schemas |
+| Yannik | Calorie Tracker (API + Schema + Frontend) |
+| Luka | Meal Plan Generator, Running Tracker |

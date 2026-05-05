@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- Rendered Plan -->
+    <!-- Rendered Plan (live preview while generating, then final result) -->
     <div id="planCard" class="hidden bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800">
             <div>
@@ -36,6 +36,10 @@
                 <p class="text-sm text-gray-500" id="planMeta"></p>
             </div>
             <div class="flex gap-2">
+                <button type="button" id="savePlanBtn" onclick="saveCurrentPlan()" class="hidden bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    Speichern
+                </button>
                 <button type="button" onclick="downloadPlan()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition" aria-label="Herunterladen">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 </button>
@@ -166,7 +170,9 @@
 <script>
 const API_URL = '/mealplan';
 let currentPlanText = '';
+let currentPlanId = null;
 let modalPlanText = '';
+let isPlanSaved = false;
 
 function calculateBMI() {
     const height = parseFloat(document.getElementById('height').value);
@@ -201,7 +207,15 @@ document.getElementById('mealPlanForm').addEventListener('submit', async functio
     };
 
     currentPlanText = '';
+    currentPlanId = null;
+    isPlanSaved = false;
     let progress = 10;
+
+    // Show the plan card immediately for live preview
+    document.getElementById('planMeta').textContent = data.goal + ' · ' + data.eating_habit + ' · ' + data.days + ' Tage';
+    document.getElementById('planContent').innerHTML = '';
+    document.getElementById('planCard').classList.remove('hidden');
+    document.getElementById('savePlanBtn').classList.add('hidden');
 
     try {
         const response = await fetch(API_URL + '/generate/stream', {
@@ -229,20 +243,23 @@ document.getElementById('mealPlanForm').addEventListener('submit', async functio
                     }
                     if (parsed.token) {
                         currentPlanText += parsed.token;
-                        progress = Math.min(progress + 2, 90);
+                        progress = Math.min(progress + 1, 90);
                         document.getElementById('progressBar').style.width = progress + '%';
+                        // Live render
+                        document.getElementById('planContent').innerHTML = marked.parse(currentPlanText);
                     }
-                    if (parsed.done) {
+                    if (parsed.done && parsed.saved) {
                         document.getElementById('progressBar').style.width = '100%';
+                        isPlanSaved = true;
+                        document.getElementById('savePlanBtn').classList.add('hidden');
+                    }
+                    if (parsed.done && !parsed.saved) {
+                        // Stream done but not auto-saved - show save button
+                        document.getElementById('savePlanBtn').classList.remove('hidden');
                     }
                 } catch (e) { /* skip non-json lines */ }
             }
         }
-
-        // Render the plan
-        document.getElementById('planMeta').textContent = data.goal + ' · ' + data.eating_habit + ' · ' + data.days + ' Tage';
-        document.getElementById('planContent').innerHTML = marked.parse(currentPlanText);
-        document.getElementById('planCard').classList.remove('hidden');
 
     } catch (error) {
         alert('Fehler: ' + error.message);
@@ -252,6 +269,35 @@ document.getElementById('mealPlanForm').addEventListener('submit', async functio
         loadPlans();
     }
 });
+
+async function saveCurrentPlan() {
+    if (!currentPlanText || isPlanSaved) return;
+
+    const data = {
+        age: parseInt(document.getElementById('age').value),
+        height: parseFloat(document.getElementById('height').value),
+        weight: parseFloat(document.getElementById('weight').value),
+        eating_habit: document.getElementById('eatingHabit').value,
+        favorite_foods: document.getElementById('favoriteFoods').value.split(',').map(f => f.trim()),
+        goal: document.getElementById('goal').value,
+        days: parseInt(document.getElementById('days').value)
+    };
+
+    try {
+        const response = await fetch(API_URL + '/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            isPlanSaved = true;
+            document.getElementById('savePlanBtn').classList.add('hidden');
+            loadPlans();
+        }
+    } catch (error) {
+        alert('Fehler beim Speichern: ' + error.message);
+    }
+}
 
 function hidePlan() {
     document.getElementById('planCard').classList.add('hidden');
@@ -289,10 +335,11 @@ async function loadPlans() {
                         </div>
                     </div>
                     <div class="flex gap-2 shrink-0">
-                        <button type="button" onclick="viewPlan(${plan.id})" class="text-gray-400 hover:text-green-400 transition p-1" aria-label="Ansehen">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <button type="button" onclick="viewPlan(${plan.id})" class="bg-green-600/20 hover:bg-green-600/40 text-green-400 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1" aria-label="Laden">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            Offnen
                         </button>
-                        <button type="button" onclick="deletePlan(${plan.id})" class="text-gray-400 hover:text-red-400 transition p-1" aria-label="Löschen">
+                        <button type="button" onclick="deletePlan(${plan.id})" class="text-gray-500 hover:text-red-400 transition p-1.5" aria-label="Loschen">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                     </div>`;

@@ -13,83 +13,94 @@ from app.schemas.running import (
     WeeklyRunning,
     PersonalBests,
     RunningGoalCreate,
-    RunningGoalResponse
+    RunningGoalResponse,
 )
+from app.utils.fp import merge, validator
 
 app = APIRouter()
 
 
-# ============== Pure Functions ==============
+# ── Validators (Closures) ─────────────────────────────────────
+
+positive_distance = validator(lambda d: isinstance(d, (int, float)) and d > 0, "Distanz muss positiv sein")
+positive_duration = validator(lambda d: isinstance(d, (int, float)) and d > 0, "Dauer muss positiv sein")
+
+
+# ── Pure Functions ─────────────────────────────────────────────
 
 def calculate_speed(distance_km: float, duration_minutes: float) -> float:
-    """Pure function: Geschwindigkeit berechnen"""
+    """Pure: Geschwindigkeit berechnen."""
     return 0 if duration_minutes == 0 else round((distance_km / duration_minutes) * 60, 2)
 
 
 def estimate_calories(distance_km: float, weight_kg: float = 70) -> float:
-    """Pure function: Kalorienverbrauch schätzen"""
+    """Pure: Kalorienverbrauch schatzen."""
     return round(distance_km * (weight_kg / 70) * 60, 1)
 
 
 def is_distance_in_range(distance: float, target: float, tolerance: float = 0.1) -> bool:
-    """Pure function: Prüfen ob Distanz im Zielbereich liegt"""
+    """Pure: Prüfen ob Distanz im Zielbereich liegt."""
     return abs(distance - target) <= tolerance
 
 
+def safe_divide(numerator: float, denominator: float) -> float:
+    """Pure: Sichere Division."""
+    return round(numerator / denominator, 2) if denominator > 0 else 0
+
+
 def create_weekly_running(session: RunningSession) -> WeeklyRunning:
-    """Pure function: RunningSession zu WeeklyRunning transformieren"""
+    """Pure: RunningSession zu WeeklyRunning transformieren."""
     return WeeklyRunning(
         date=session.date,
         distance_km=session.distance_km,
         duration_minutes=session.duration_minutes,
         avg_speed_kmh=session.avg_speed_kmh,
-        calories_burned=session.calories_burned
+        calories_burned=session.calories_burned,
     )
 
 
-def safe_divide(numerator: float, denominator: float) -> float:
-    """Pure function: Sichere Division"""
-    return round(numerator / denominator, 2) if denominator > 0 else 0
-
-
-# ============== Database Service Functions ==============
+# ── DB Service Functions ───────────────────────────────────────
 
 def get_session_by_id(db: Session, session_id: int) -> RunningSession | None:
-    """DB operation: Session nach ID"""
     return db.query(RunningSession).filter(RunningSession.id == session_id).first()
 
 
 def get_sessions_by_date(db: Session, target_date: date) -> List[RunningSession]:
-    """DB operation: Sessions nach Datum"""
     return db.query(RunningSession).filter(RunningSession.date == target_date).all()
 
 
 def get_sessions_in_range(db: Session, start: date, end: date) -> List[RunningSession]:
-    """DB operation: Sessions in Zeitraum"""
-    return db.query(RunningSession).filter(
-        and_(RunningSession.date >= start, RunningSession.date <= end)
-    ).order_by(RunningSession.date.desc()).all()
+    return (
+        db.query(RunningSession)
+        .filter(and_(RunningSession.date >= start, RunningSession.date <= end))
+        .order_by(RunningSession.date.desc())
+        .all()
+    )
+
+
+def build_session(data: RunningSessionCreate) -> dict:
+    """Pure: Session-Daten mit berechneten Feldern aufbauen."""
+    avg_speed = calculate_speed(data.distance_km, data.duration_minutes)
+    calories = estimate_calories(data.distance_km)
+    return merge(
+        {
+            "date": data.date, "time": data.time,
+            "distance_km": data.distance_km,
+            "duration_minutes": data.duration_minutes,
+        },
+        {
+            "avg_speed_kmh": avg_speed,
+            "calories_burned": calories,
+            "heart_rate_avg": data.heart_rate_avg,
+            "route": data.route, "weather": data.weather,
+            "feeling": data.feeling, "note": data.note,
+        },
+    )
 
 
 def create_running_session(db: Session, data: RunningSessionCreate) -> RunningSession:
-    """DB operation: Neue Session erstellen"""
-    avg_speed = calculate_speed(data.distance_km, data.duration_minutes)
-    calories = estimate_calories(data.distance_km)
-
-    session = RunningSession(
-        date=data.date,
-        time=data.time,
-        distance_km=data.distance_km,
-        duration_minutes=data.duration_minutes,
-        avg_speed_kmh=avg_speed,
-        calories_burned=calories,
-        heart_rate_avg=data.heart_rate_avg,
-        route=data.route,
-        weather=data.weather,
-        feeling=data.feeling,
-        note=data.note
-    )
-
+    session_data = build_session(data)
+    session = RunningSession(**session_data)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -97,7 +108,6 @@ def create_running_session(db: Session, data: RunningSessionCreate) -> RunningSe
 
 
 def delete_session_by_id(db: Session, session_id: int) -> RunningSession | None:
-    """DB operation: Session löschen"""
     session = get_session_by_id(db, session_id)
     if session:
         db.delete(session)
@@ -106,43 +116,37 @@ def delete_session_by_id(db: Session, session_id: int) -> RunningSession | None:
 
 
 def update_session_fields(session: RunningSession, data: RunningSessionUpdate) -> None:
-    """DB operation: Session-Felder aktualisieren"""
+    """Mutates session - side effect isolated in service layer."""
     updates = {
         "distance_km": data.distance_km,
         "duration_minutes": data.duration_minutes,
         "heart_rate_avg": data.heart_rate_avg,
-        "route": data.route,
-        "weather": data.weather,
-        "feeling": data.feeling,
-        "note": data.note
+        "route": data.route, "weather": data.weather,
+        "feeling": data.feeling, "note": data.note,
     }
-
     for field, value in updates.items():
         if value is not None:
             setattr(session, field, value)
 
-    # Recalculate speed and calories if distance or duration changed
     if data.distance_km or data.duration_minutes:
         session.avg_speed_kmh = calculate_speed(session.distance_km, session.duration_minutes)
         session.calories_burned = estimate_calories(session.distance_km)
 
 
-# ============== Goal Service Functions ==============
+# ── Goal Service Functions ─────────────────────────────────────
 
 def get_goal_by_id(db: Session, goal_id: int) -> RunningGoal | None:
-    """DB operation: Goal nach ID"""
     return db.query(RunningGoal).filter(RunningGoal.id == goal_id).first()
 
 
 def create_running_goal(db: Session, data: RunningGoalCreate) -> RunningGoal:
-    """DB operation: Neues Goal erstellen"""
     goal = RunningGoal(
         goal_type=data.goal_type,
         target_distance_km=data.target_distance_km,
         target_time_minutes=data.target_time_minutes,
         start_date=data.start_date,
         end_date=data.end_date,
-        achieved=False
+        achieved=False,
     )
     db.add(goal)
     db.commit()
@@ -151,16 +155,14 @@ def create_running_goal(db: Session, data: RunningGoalCreate) -> RunningGoal:
 
 
 def get_active_goals(db: Session) -> List[RunningGoal]:
-    """DB operation: Aktive Goals"""
     today = date.today()
     return db.query(RunningGoal).filter(
         RunningGoal.achieved == False,
-        RunningGoal.start_date <= today
+        RunningGoal.start_date <= today,
     ).all()
 
 
 def complete_goal_by_id(db: Session, goal_id: int) -> RunningGoal | None:
-    """DB operation: Goal als erreicht markieren"""
     goal = get_goal_by_id(db, goal_id)
     if goal:
         goal.achieved = True
@@ -169,7 +171,6 @@ def complete_goal_by_id(db: Session, goal_id: int) -> RunningGoal | None:
 
 
 def delete_goal_by_id(db: Session, goal_id: int) -> RunningGoal | None:
-    """DB operation: Goal löschen"""
     goal = get_goal_by_id(db, goal_id)
     if goal:
         db.delete(goal)
@@ -177,13 +178,12 @@ def delete_goal_by_id(db: Session, goal_id: int) -> RunningGoal | None:
     return goal
 
 
-# ============== Statistics Functions ==============
+# ── Statistics Functions ────────────────────────────────────────
 
 def get_best_time_for_distance(db: Session, target_distance: float, start_date: date = None) -> RunningSession | None:
-    """DB operation: Beste Zeit für Distanz finden"""
     query = db.query(RunningSession).filter(
         RunningSession.distance_km >= target_distance - 0.1,
-        RunningSession.distance_km <= target_distance + 0.1
+        RunningSession.distance_km <= target_distance + 0.1,
     )
     if start_date:
         query = query.filter(RunningSession.date >= start_date)
@@ -191,7 +191,7 @@ def get_best_time_for_distance(db: Session, target_distance: float, start_date: 
 
 
 def calculate_stats_from_result(result, total_distance: float) -> RunningStats:
-    """Pure function: Stats aus DB-Resultat berechnen"""
+    """Pure: Stats aus DB-Resultat berechnen."""
     total_sessions = result.total_sessions or 0
     return RunningStats(
         total_distance_km=round(total_distance, 2),
@@ -201,14 +201,16 @@ def calculate_stats_from_result(result, total_distance: float) -> RunningStats:
         avg_speed_kmh=round(result.avg_speed or 0, 2),
         total_calories_burned=round(result.total_calories or 0, 1),
         best_5k_time=None,
-        best_10k_time=None
+        best_10k_time=None,
     )
 
 
-# ============== Route Handlers ==============
+# ── Route Handlers ─────────────────────────────────────────────
 
 @app.post("/", response_model=RunningSessionResponse, status_code=201)
 def create_running_session_route(session: RunningSessionCreate, db: Session = Depends(get_db)):
+    positive_distance(session.distance_km)
+    positive_duration(session.duration_minutes)
     return create_running_session(db, session)
 
 
@@ -250,7 +252,7 @@ def get_week_stats(db: Session = Depends(get_db)):
         func.sum(RunningSession.duration_minutes).label("total_duration"),
         func.count(RunningSession.id).label("total_sessions"),
         func.avg(RunningSession.avg_speed_kmh).label("avg_speed"),
-        func.sum(RunningSession.calories_burned).label("total_calories")
+        func.sum(RunningSession.calories_burned).label("total_calories"),
     ).filter(RunningSession.date >= week_ago).first()
 
     stats = calculate_stats_from_result(result, result.total_distance or 0)
@@ -266,7 +268,7 @@ def get_week_stats(db: Session = Depends(get_db)):
         avg_speed_kmh=stats.avg_speed_kmh,
         total_calories_burned=stats.total_calories_burned,
         best_5k_time=best_5k.duration_minutes if best_5k else None,
-        best_10k_time=best_10k.duration_minutes if best_10k else None
+        best_10k_time=best_10k.duration_minutes if best_10k else None,
     )
 
 
@@ -277,7 +279,7 @@ def get_all_time_stats(db: Session = Depends(get_db)):
         func.sum(RunningSession.duration_minutes).label("total_duration"),
         func.count(RunningSession.id).label("total_sessions"),
         func.avg(RunningSession.avg_speed_kmh).label("avg_speed"),
-        func.sum(RunningSession.calories_burned).label("total_calories")
+        func.sum(RunningSession.calories_burned).label("total_calories"),
     ).first()
 
     stats = calculate_stats_from_result(result, result.total_distance or 0)
@@ -293,7 +295,7 @@ def get_all_time_stats(db: Session = Depends(get_db)):
         avg_speed_kmh=stats.avg_speed_kmh,
         total_calories_burned=stats.total_calories_burned,
         best_5k_time=best_5k.duration_minutes if best_5k else None,
-        best_10k_time=best_10k.duration_minutes if best_10k else None
+        best_10k_time=best_10k.duration_minutes if best_10k else None,
     )
 
 
@@ -314,7 +316,7 @@ def get_personal_bests(db: Session = Depends(get_db)):
         best_5k_minutes=best_5k.duration_minutes if best_5k else None,
         best_10k_minutes=best_10k.duration_minutes if best_10k else None,
         longest_distance_km=longest_run.distance_km if longest_run else None,
-        fastest_avg_speed=fastest_run.avg_speed_kmh if fastest_run else None
+        fastest_avg_speed=fastest_run.avg_speed_kmh if fastest_run else None,
     )
 
 
@@ -324,11 +326,10 @@ def search_sessions(
     min_distance: Optional[float] = None,
     max_distance: Optional[float] = None,
     min_speed: Optional[float] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = db.query(RunningSession)
 
-    # Apply filters functionally
     if route:
         query = query.filter(RunningSession.route.ilike(f"%{route}%"))
     if min_distance:
@@ -358,10 +359,10 @@ def delete_session(session_id: int, db: Session = Depends(get_db)):
     session = delete_session_by_id(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session nicht gefunden")
-    return {"message": f"Session vom {session.date} gelöscht"}
+    return {"message": f"Session vom {session.date} geloscht"}
 
 
-# ============== Goal Routes ==============
+# ── Goal Routes ────────────────────────────────────────────────
 
 @app.post("/goals", response_model=RunningGoalResponse, status_code=201)
 def create_goal(goal: RunningGoalCreate, db: Session = Depends(get_db)):
@@ -391,4 +392,4 @@ def delete_goal(goal_id: int, db: Session = Depends(get_db)):
     goal = delete_goal_by_id(db, goal_id)
     if not goal:
         raise HTTPException(status_code=404, detail="Ziel nicht gefunden")
-    return {"message": "Ziel gelöscht"}
+    return {"message": "Ziel geloscht"}

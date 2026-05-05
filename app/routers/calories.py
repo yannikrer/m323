@@ -3,8 +3,6 @@ from sqlalchemy import func, and_
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import date, timedelta
 from typing import List, Optional
-from functools import reduce
-
 from app.database.db import Calories, get_db
 from app.schemas.calories import (
     CalorieEntryCreate,
@@ -15,7 +13,13 @@ from app.schemas.calories import (
     MealSummary,
     MacroPercentages,
     NutritionGoals,
-    DailyProgress
+    DailyProgress,
+)
+from app.utils.fp import (
+    group_by,
+    sum_by,
+    flat_map,
+    validator,
 )
 
 app = APIRouter()
@@ -23,20 +27,29 @@ app = APIRouter()
 MEAL_TYPES = ["Frühstück", "Mittagessen", "Abendessen", "Snack"]
 
 
-# ============== Pure Functions ==============
+# ── Validators (Closures) ─────────────────────────────────────
+
+valid_meal = validator(
+    lambda m: m in MEAL_TYPES,
+    f"Ungultiger Mahlzeittyp. Erlaubt: {', '.join(MEAL_TYPES)}"
+)
+positive_float = validator(
+    lambda x: isinstance(x, (int, float)) and x > 0,
+    "Wert muss positiv sein"
+)
+
+
+# ── Pure Functions ─────────────────────────────────────────────
 
 def validate_meal_type(meal: str) -> str:
-    """Pure function: Mahlzeittyp validieren, gibt meal zurück oder wirft Exception"""
-    if meal not in MEAL_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Ungültiger Mahlzeittyp. Erlaubt: {', '.join(MEAL_TYPES)}"
-        )
-    return meal
+    """Pure: Mahlzeittyp validieren."""
+    return valid_meal(meal)
 
 
-def calculate_macro_percentages(protein: float, carbs: float, fat: float) -> MacroPercentages:
-    """Pure function: Makro-Prozentsätze berechnen"""
+def calculate_macro_percentages(
+    protein: float, carbs: float, fat: float
+) -> MacroPercentages:
+    """Pure: Makro-Prozentsatze berechnen."""
     protein_cal = protein * 4
     carbs_cal = carbs * 4
     fat_cal = fat * 9
@@ -45,7 +58,7 @@ def calculate_macro_percentages(protein: float, carbs: float, fat: float) -> Mac
     if total_cal == 0:
         return MacroPercentages(
             protein_percent=0, carbs_percent=0, fat_percent=0,
-            protein_grams=protein, carbs_grams=carbs, fat_grams=fat
+            protein_grams=protein, carbs_grams=carbs, fat_grams=fat,
         )
 
     return MacroPercentages(
@@ -54,27 +67,23 @@ def calculate_macro_percentages(protein: float, carbs: float, fat: float) -> Mac
         fat_percent=round((fat_cal / total_cal) * 100, 1),
         protein_grams=protein,
         carbs_grams=carbs,
-        fat_grams=fat
+        fat_grams=fat,
     )
 
 
-def sum_field(entries: List[Calories], field: str) -> float:
-    """Pure function: Feld aus Entries summieren"""
-    return sum(getattr(e, field) for e in entries)
-
 
 def calculate_totals(entries: List[Calories]) -> dict:
-    """Pure function: Alle Totals berechnen"""
+    """Pure: Alle Totals berechnen mit HOFs."""
     return {
-        "calories": sum_field(entries, "calories"),
-        "protein": sum_field(entries, "protein"),
-        "carbs": sum_field(entries, "carbs"),
-        "fat": sum_field(entries, "fat")
+        "calories": sum_by(lambda e: e.calories)(entries),
+        "protein": sum_by(lambda e: e.protein)(entries),
+        "carbs": sum_by(lambda e: e.carbs)(entries),
+        "fat": sum_by(lambda e: e.fat)(entries),
     }
 
 
 def create_daily_summary(target_date: date, entries: List[Calories]) -> DailySummary:
-    """Pure function: DailySummary erstellen"""
+    """Pure: DailySummary erstellen."""
     totals = calculate_totals(entries)
     return DailySummary(
         date=target_date,
@@ -83,43 +92,31 @@ def create_daily_summary(target_date: date, entries: List[Calories]) -> DailySum
         total_carbs=round(totals["carbs"], 1),
         total_fat=round(totals["fat"], 1),
         meal_count=len(entries),
-        meals=entries
+        meals=entries,
     )
 
 
 def group_entries_by_date(entries: List[Calories]) -> dict:
-    """Pure function: Entries nach Datum gruppieren"""
-    return reduce(
-        lambda acc, entry: {**acc, entry.date: acc.get(entry.date, []) + [entry]},
-        entries,
-        {}
-    )
+    """Pure: Entries nach Datum gruppieren (rekursiv via group_by)."""
+    return group_by(lambda e: e.date)(entries)
 
 
 def calculate_progress_percent(current: float, goal: float) -> float:
-    """Pure function: Fortschritt in Prozent"""
+    """Pure: Fortschritt in Prozent."""
     return round((current / goal) * 100, 1) if goal > 0 else 0
 
 
-# ============== Database Service Functions ==============
+# ── DB Service Functions ───────────────────────────────────────
 
 def get_entry_by_id(db: Session, entry_id: int) -> Calories | None:
-    """DB operation: Entry nach ID"""
     return db.query(Calories).filter(Calories.id == entry_id).first()
 
 
 def create_calorie_entry(db: Session, data: CalorieEntryCreate) -> Calories:
-    """DB operation: Neuen Entry erstellen"""
     entry = Calories(
-        date=data.date,
-        meal=data.meal,
-        food=data.food,
-        amount=data.amount,
-        calories=data.calories,
-        protein=data.protein,
-        carbs=data.carbs,
-        fat=data.fat,
-        note=data.note
+        date=data.date, meal=data.meal, food=data.food,
+        amount=data.amount, calories=data.calories,
+        protein=data.protein, carbs=data.carbs, fat=data.fat, note=data.note,
     )
     db.add(entry)
     db.commit()
@@ -128,19 +125,18 @@ def create_calorie_entry(db: Session, data: CalorieEntryCreate) -> Calories:
 
 
 def get_entries_by_date(db: Session, target_date: date) -> List[Calories]:
-    """DB operation: Entries nach Datum"""
     return db.query(Calories).filter(Calories.date == target_date).all()
 
 
 def get_entries_in_range(db: Session, start: date, end: date) -> List[Calories]:
-    """DB operation: Entries in Zeitraum"""
-    return db.query(Calories).filter(
-        and_(Calories.date >= start, Calories.date <= end)
-    ).all()
+    return (
+        db.query(Calories)
+        .filter(and_(Calories.date >= start, Calories.date <= end))
+        .all()
+    )
 
 
 def delete_entry_by_id(db: Session, entry_id: int) -> Calories | None:
-    """DB operation: Entry löschen"""
     entry = get_entry_by_id(db, entry_id)
     if entry:
         db.delete(entry)
@@ -148,26 +144,21 @@ def delete_entry_by_id(db: Session, entry_id: int) -> Calories | None:
     return entry
 
 
-def update_entry_fields(entry: Calories, data: CalorieEntryUpdate) -> None:
-    """DB operation: Entry-Felder aktualisieren"""
-    updates = {
-        "meal": data.meal,
-        "food": data.food,
-        "amount": data.amount,
-        "calories": data.calories,
-        "protein": data.protein,
-        "carbs": data.carbs,
-        "fat": data.fat,
-        "note": data.note
+def build_update_dict(data: CalorieEntryUpdate) -> dict:
+    """Pure: Update-Dictionary bauen mit Validierung."""
+    fields = {
+        "meal": data.meal, "food": data.food, "amount": data.amount,
+        "calories": data.calories, "protein": data.protein,
+        "carbs": data.carbs, "fat": data.fat, "note": data.note,
     }
-    for field, value in updates.items():
-        if value is not None:
-            if field == "meal":
-                validate_meal_type(value)
-            setattr(entry, field, value)
+    return {
+        k: (validate_meal_type(v) if k == "meal" else v)
+        for k, v in fields.items()
+        if v is not None
+    }
 
 
-# ============== Route Handlers ==============
+# ── Route Handlers ─────────────────────────────────────────────
 
 @app.post("/", response_model=CalorieEntryResponse, status_code=201)
 def create_calorie_entry_route(entry: CalorieEntryCreate, db: Session = Depends(get_db)):
@@ -177,22 +168,19 @@ def create_calorie_entry_route(entry: CalorieEntryCreate, db: Session = Depends(
 
 
 @app.get("/", response_model=List[CalorieEntryResponse])
-def get_all_entries(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
-    entries = db.query(Calories).order_by(
-        Calories.date.desc(), Calories.id.desc()
-    ).offset(skip).limit(limit).all()
+def get_all_entries(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    entries = (
+        db.query(Calories)
+        .order_by(Calories.date.desc(), Calories.id.desc())
+        .offset(skip).limit(limit).all()
+    )
     return entries
 
 
 @app.get("/today", response_model=DailySummary)
 def get_today_entries(db: Session = Depends(get_db)):
-    today = date.today()
-    entries = get_entries_by_date(db, today)
-    return create_daily_summary(today, entries)
+    entries = get_entries_by_date(db, date.today())
+    return create_daily_summary(date.today(), entries)
 
 
 @app.get("/date/{target_date}", response_model=DailySummary)
@@ -202,10 +190,7 @@ def get_entries_by_date_route(target_date: date, db: Session = Depends(get_db)):
 
 
 @app.get("/week", response_model=WeeklySummary)
-def get_week_summary(
-    start_date: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
+def get_week_summary(start_date: Optional[date] = None, db: Session = Depends(get_db)):
     if start_date is None:
         end_date = date.today()
         start_date = end_date - timedelta(days=6)
@@ -215,10 +200,10 @@ def get_week_summary(
     entries = get_entries_in_range(db, start_date, end_date)
     grouped = group_entries_by_date(entries)
 
-    daily_summaries = [
-        create_daily_summary(d, grouped.get(d, []))
-        for d in (start_date + timedelta(days=i) for i in range(7))
-    ]
+    daily_summaries = list(map(
+        lambda d: create_daily_summary(d, grouped.get(d, [])),
+        (start_date + timedelta(days=i) for i in range(7)),
+    ))
 
     totals = calculate_totals(entries)
     days_count = (end_date - start_date).days + 1
@@ -231,7 +216,7 @@ def get_week_summary(
         total_protein=round(totals["protein"], 1),
         total_carbs=round(totals["carbs"], 1),
         total_fat=round(totals["fat"], 1),
-        daily_summaries=daily_summaries
+        daily_summaries=daily_summaries,
     )
 
 
@@ -240,7 +225,7 @@ def get_entries_by_meal(
     meal_type: str,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     validate_meal_type(meal_type)
 
@@ -257,39 +242,36 @@ def get_entries_by_meal(
 def get_meal_stats(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     start = start_date or date.today() - timedelta(days=30)
     end = end_date or date.today()
 
     entries = get_entries_in_range(db, start, end)
 
-    # Group by meal type functionally
-    meal_data = reduce(
-        lambda acc, e: {
-            **acc,
-            e.meal: {
-                "calories": acc.get(e.meal, {}).get("calories", 0) + e.calories,
-                "protein": acc.get(e.meal, {}).get("protein", 0) + e.protein,
-                "carbs": acc.get(e.meal, {}).get("carbs", 0) + e.carbs,
-                "fat": acc.get(e.meal, {}).get("fat", 0) + e.fat,
-                "count": acc.get(e.meal, {}).get("count", 0) + 1
-            }
-        },
+    meal_data = flat_map(
+        lambda entry: [{
+            "meal": entry.meal,
+            "calories": entry.calories,
+            "protein": entry.protein,
+            "carbs": entry.carbs,
+            "fat": entry.fat,
+        }],
         entries,
-        {}
     )
+
+    aggregated = group_by(lambda d: d["meal"])(meal_data)
 
     return [
         MealSummary(
             meal=meal,
-            total_calories=round(data["calories"], 1),
-            total_protein=round(data["protein"], 1),
-            total_carbs=round(data["carbs"], 1),
-            total_fat=round(data["fat"], 1),
-            entry_count=data["count"]
+            total_calories=round(sum_by(lambda d: d["calories"])(items), 1),
+            total_protein=round(sum_by(lambda d: d["protein"])(items), 1),
+            total_carbs=round(sum_by(lambda d: d["carbs"])(items), 1),
+            total_fat=round(sum_by(lambda d: d["fat"])(items), 1),
+            entry_count=len(items),
         )
-        for meal, data in meal_data.items()
+        for meal, items in aggregated.items()
     ]
 
 
@@ -297,23 +279,25 @@ def get_meal_stats(
 def get_macro_stats(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     start = start_date or date.today() - timedelta(days=7)
     end = end_date or date.today()
 
-    result = db.query(
-        func.sum(Calories.protein).label("total_protein"),
-        func.sum(Calories.carbs).label("total_carbs"),
-        func.sum(Calories.fat).label("total_fat")
-    ).filter(
-        and_(Calories.date >= start, Calories.date <= end)
-    ).first()
+    result = (
+        db.query(
+            func.sum(Calories.protein).label("total_protein"),
+            func.sum(Calories.carbs).label("total_carbs"),
+            func.sum(Calories.fat).label("total_fat"),
+        )
+        .filter(and_(Calories.date >= start, Calories.date <= end))
+        .first()
+    )
 
     return calculate_macro_percentages(
         result.total_protein or 0,
         result.total_carbs or 0,
-        result.total_fat or 0
+        result.total_fat or 0,
     )
 
 
@@ -323,31 +307,19 @@ def get_today_progress(
     protein_goal: float = Query(150, gt=0),
     carbs_goal: float = Query(200, gt=0),
     fat_goal: float = Query(65, gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    today = date.today()
-    entries = get_entries_by_date(db, today)
+    entries = get_entries_by_date(db, date.today())
     totals = calculate_totals(entries)
 
-    consumed = DailySummary(
-        date=today,
-        total_calories=round(totals["calories"], 1),
-        total_protein=round(totals["protein"], 1),
-        total_carbs=round(totals["carbs"], 1),
-        total_fat=round(totals["fat"], 1),
-        meal_count=len(entries),
-        meals=entries
-    )
-
+    consumed = create_daily_summary(date.today(), entries)
     goals = NutritionGoals(
-        calorie_goal=calorie_goal,
-        protein_goal=protein_goal,
-        carbs_goal=carbs_goal,
-        fat_goal=fat_goal
+        calorie_goal=calorie_goal, protein_goal=protein_goal,
+        carbs_goal=carbs_goal, fat_goal=fat_goal,
     )
 
     return DailyProgress(
-        date=today,
+        date=date.today(),
         consumed=consumed,
         goals=goals,
         remaining_calories=round(calorie_goal - totals["calories"], 1),
@@ -357,7 +329,7 @@ def get_today_progress(
         calorie_progress_percent=calculate_progress_percent(totals["calories"], calorie_goal),
         protein_progress_percent=calculate_progress_percent(totals["protein"], protein_goal),
         carbs_progress_percent=calculate_progress_percent(totals["carbs"], carbs_goal),
-        fat_progress_percent=calculate_progress_percent(totals["fat"], fat_goal)
+        fat_progress_percent=calculate_progress_percent(totals["fat"], fat_goal),
     )
 
 
@@ -367,7 +339,7 @@ def search_entries(
     meal: Optional[str] = None,
     min_calories: Optional[float] = None,
     max_calories: Optional[float] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = db.query(Calories)
 
@@ -386,15 +358,16 @@ def search_entries(
 
 @app.put("/{entry_id}", response_model=CalorieEntryResponse)
 def update_entry(
-    entry_id: int,
-    update_data: CalorieEntryUpdate,
-    db: Session = Depends(get_db)
+    entry_id: int, update_data: CalorieEntryUpdate, db: Session = Depends(get_db)
 ):
     entry = get_entry_by_id(db, entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Eintrag nicht gefunden")
 
-    update_entry_fields(entry, update_data)
+    updates = build_update_dict(update_data)
+    for field, value in updates.items():
+        setattr(entry, field, value)
+
     db.commit()
     db.refresh(entry)
     return entry
@@ -405,7 +378,7 @@ def delete_entry(entry_id: int, db: Session = Depends(get_db)):
     entry = delete_entry_by_id(db, entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Eintrag nicht gefunden")
-    return {"message": f"Eintrag gelöscht: {entry.food}"}
+    return {"message": f"Eintrag geloscht: {entry.food}"}
 
 
 @app.get("/stats/summary")
@@ -419,7 +392,7 @@ def get_summary_stats(db: Session = Depends(get_db)):
         func.sum(Calories.calories).label("total_calories"),
         func.sum(Calories.protein).label("total_protein"),
         func.sum(Calories.carbs).label("total_carbs"),
-        func.sum(Calories.fat).label("total_fat")
+        func.sum(Calories.fat).label("total_fat"),
     ).filter(Calories.date >= week_ago).first()
 
     unique_foods = db.query(func.count(func.distinct(Calories.food))).scalar() or 0
@@ -433,6 +406,6 @@ def get_summary_stats(db: Session = Depends(get_db)):
             "avg_per_day": round((week_result.total_calories or 0) / 7, 1),
             "total_protein": round(week_result.total_protein or 0, 1),
             "total_carbs": round(week_result.total_carbs or 0, 1),
-            "total_fat": round(week_result.total_fat or 0, 1)
-        }
+            "total_fat": round(week_result.total_fat or 0, 1),
+        },
     }

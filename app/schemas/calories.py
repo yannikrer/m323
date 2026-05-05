@@ -3,9 +3,9 @@ from typing import Optional, List
 from datetime import date as date_type
 import datetime
 
-class CalorieEntryCreate(BaseModel):
+class CalorieEntryCreate(BaseModel, frozen=True):
     date: Optional[date_type] = None
-    meal: str = Field(..., description="Frühstück, Mittagessen, Abendessen, Snack")
+    meal: str = Field(..., description="Fruhstuck, Mittagessen, Abendessen, Snack")
     food: str = Field(..., min_length=1)
     amount: float = Field(..., gt=0, description="Menge in Gramm")
     calories: float = Field(..., gt=0)
@@ -13,12 +13,12 @@ class CalorieEntryCreate(BaseModel):
     carbs: Optional[float] = Field(default=0.0, ge=0)
     fat: Optional[float] = Field(default=0.0, ge=0)
     note: Optional[str] = None
-    
-    def model_post_init(self, __context):
-        if self.date is None:
-            self.date = datetime.date.today()
 
-class CalorieEntryUpdate(BaseModel):
+    def model_post_init(self, _context):
+        if self.date is None:
+            object.__setattr__(self, 'date', datetime.date.today())
+
+class CalorieEntryUpdate(BaseModel, frozen=True):
     meal: Optional[str] = None
     food: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
@@ -28,7 +28,7 @@ class CalorieEntryUpdate(BaseModel):
     fat: Optional[float] = Field(None, ge=0)
     note: Optional[str] = None
 
-class CalorieEntryResponse(BaseModel):
+class CalorieEntryResponse(BaseModel, frozen=True):
     id: int
     date: date_type
     meal: str
@@ -39,11 +39,11 @@ class CalorieEntryResponse(BaseModel):
     carbs: float
     fat: float
     note: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
-class DailySummary(BaseModel):
+class DailySummary(BaseModel, frozen=True):
     date: date_type
     total_calories: float
     total_protein: float
@@ -52,7 +52,7 @@ class DailySummary(BaseModel):
     meal_count: int
     meals: List[CalorieEntryResponse]
 
-class WeeklySummary(BaseModel):
+class WeeklySummary(BaseModel, frozen=True):
     start_date: date_type
     end_date: date_type
     total_calories: float
@@ -62,7 +62,7 @@ class WeeklySummary(BaseModel):
     total_fat: float
     daily_summaries: List[DailySummary]
 
-class MealSummary(BaseModel):
+class MealSummary(BaseModel, frozen=True):
     meal: str
     total_calories: float
     total_protein: float
@@ -70,7 +70,7 @@ class MealSummary(BaseModel):
     total_fat: float
     entry_count: int
 
-class MacroPercentages(BaseModel):
+class MacroPercentages(BaseModel, frozen=True):
     protein_percent: float
     carbs_percent: float
     fat_percent: float
@@ -78,13 +78,13 @@ class MacroPercentages(BaseModel):
     carbs_grams: float
     fat_grams: float
 
-class NutritionGoals(BaseModel):
+class NutritionGoals(BaseModel, frozen=True):
     calorie_goal: float
     protein_goal: float
     carbs_goal: float
     fat_goal: float
 
-class DailyProgress(BaseModel):
+class DailyProgress(BaseModel, frozen=True):
     date: date_type
     consumed: DailySummary
     goals: NutritionGoals

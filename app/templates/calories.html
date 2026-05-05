@@ -14,51 +14,103 @@
         </button>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Goal Settings -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Tagesziele</h3>
+            <button type="button" onclick="document.getElementById('goalModal').classList.remove('hidden')" class="text-accent-400 hover:text-accent-300 text-sm font-medium transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Ziele andern
+            </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <p class="text-gray-500 text-xs mb-1">Kalorien</p>
+                <p class="text-xl font-bold text-accent-400" id="goalCalDisplay">2000</p>
+                <p class="text-gray-600 text-xs">kcal</p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <p class="text-gray-500 text-xs mb-1">Protein</p>
+                <p class="text-xl font-bold text-red-400" id="goalProtDisplay">150</p>
+                <p class="text-gray-600 text-xs">g</p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <p class="text-gray-500 text-xs mb-1">Kohlenhydrate</p>
+                <p class="text-xl font-bold text-yellow-400" id="goalCarbDisplay">250</p>
+                <p class="text-gray-600 text-xs">g</p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <p class="text-gray-500 text-xs mb-1">Fett</p>
+                <p class="text-xl font-bold text-blue-400" id="goalFatDisplay">67</p>
+                <p class="text-gray-600 text-xs">g</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards (consumed today) -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <p class="text-gray-500 text-sm">Kalorien heute</p>
             <p class="text-2xl font-bold text-accent-400 mt-1" id="todayCalories">0 kcal</p>
+            <p class="text-xs mt-1" id="calRemaining"></p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <p class="text-gray-500 text-sm">Protein</p>
             <p class="text-2xl font-bold text-red-400 mt-1" id="todayProtein">0 g</p>
+            <p class="text-xs mt-1" id="protRemaining"></p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <p class="text-gray-500 text-sm">Kohlenhydrate</p>
             <p class="text-2xl font-bold text-yellow-400 mt-1" id="todayCarbs">0 g</p>
+            <p class="text-xs mt-1" id="carbRemaining"></p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <p class="text-gray-500 text-sm">Fett</p>
             <p class="text-2xl font-bold text-blue-400 mt-1" id="todayFat">0 g</p>
+            <p class="text-xs mt-1" id="fatRemaining"></p>
         </div>
     </div>
 
-    <!-- Macro Progress -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-sm text-gray-400">Kalorien-Fortschritt</span>
-            <div class="flex items-center gap-2">
-                <input type="number" id="calorieGoal" value="2000" min="0" class="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:ring-2 focus:ring-accent-500 outline-none" aria-label="Kalorienziel">
-                <span class="text-gray-500 text-sm">kcal Ziel</span>
+    <!-- Progress Bars -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
+        <!-- Calories -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-gray-400">Kalorien</span>
+                <span class="text-gray-500" id="calProgressLabel">0 / 2000 kcal</span>
+            </div>
+            <div class="w-full bg-gray-800 rounded-full h-3">
+                <div class="h-3 rounded-full transition-all duration-500 bg-gradient-to-r from-accent-600 to-pink-400" id="calorieProgress"></div>
             </div>
         </div>
-        <div class="w-full bg-gray-800 rounded-full h-4">
-            <div class="h-4 rounded-full transition-all duration-500 bg-gradient-to-r from-accent-600 to-pink-400" id="calorieProgress"></div>
+        <!-- Protein -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-red-400">Protein</span>
+                <span class="text-gray-500" id="protProgressLabel">0 / 150 g</span>
+            </div>
+            <div class="w-full bg-gray-800 rounded-full h-2">
+                <div class="h-2 rounded-full transition-all duration-500 bg-red-500" id="proteinBar"></div>
+            </div>
         </div>
-        <!-- Macro bars -->
-        <div class="grid grid-cols-3 gap-4 mt-4">
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span class="text-red-400">Protein</span><span class="text-gray-500">150g</span></div>
-                <div class="w-full bg-gray-800 rounded-full h-2"><div class="h-2 rounded-full bg-red-500 transition-all duration-500" id="proteinBar"></div></div>
+        <!-- Carbs -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-yellow-400">Kohlenhydrate</span>
+                <span class="text-gray-500" id="carbProgressLabel">0 / 250 g</span>
             </div>
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span class="text-yellow-400">Carbs</span><span class="text-gray-500">200g</span></div>
-                <div class="w-full bg-gray-800 rounded-full h-2"><div class="h-2 rounded-full bg-yellow-500 transition-all duration-500" id="carbsBar"></div></div>
+            <div class="w-full bg-gray-800 rounded-full h-2">
+                <div class="h-2 rounded-full transition-all duration-500 bg-yellow-500" id="carbsBar"></div>
             </div>
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span class="text-blue-400">Fett</span><span class="text-gray-500">65g</span></div>
-                <div class="w-full bg-gray-800 rounded-full h-2"><div class="h-2 rounded-full bg-blue-500 transition-all duration-500" id="fatBar"></div></div>
+        </div>
+        <!-- Fat -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-blue-400">Fett</span>
+                <span class="text-gray-500" id="fatProgressLabel">0 / 67 g</span>
+            </div>
+            <div class="w-full bg-gray-800 rounded-full h-2">
+                <div class="h-2 rounded-full transition-all duration-500 bg-blue-500" id="fatBar"></div>
             </div>
         </div>
     </div>
@@ -71,7 +123,53 @@
     </div>
 </div>
 
-<!-- Add Modal -->
+<!-- Goal Settings Modal -->
+<div id="goalModal" class="modal-overlay hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="modal-content bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Tagesziele einstellen</h3>
+            <button type="button" onclick="document.getElementById('goalModal').classList.add('hidden')" class="text-gray-500 hover:text-white transition" aria-label="Schliessen">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Kalorienziel (kcal)</label>
+                <input type="number" id="goalCalInput" min="800" max="6000" step="50" placeholder="z.B. 2000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Ernahrungsziel</label>
+                <select id="goalTypeInput" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none" title="Ernahrungsziel">
+                    <option value="ausgewogen">Ausgewogen (20% P / 50% C / 30% F)</option>
+                    <option value="abnehmen">Abnehmen (30% P / 40% C / 30% F)</option>
+                    <option value="muskelaufbau">Muskelaufbau (30% P / 45% C / 25% F)</option>
+                    <option value="lowcarb">Low-Carb (30% P / 25% C / 45% F)</option>
+                    <option value="keto">Keto (20% P / 5% C / 75% F)</option>
+                </select>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4">
+                <p class="text-sm text-gray-400 mb-3">Berechnete Makro-Ziele:</p>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div>
+                        <p class="text-lg font-bold text-red-400" id="previewProt">-</p>
+                        <p class="text-xs text-gray-500">Protein (g)</p>
+                    </div>
+                    <div>
+                        <p class="text-lg font-bold text-yellow-400" id="previewCarb">-</p>
+                        <p class="text-xs text-gray-500">Carbs (g)</p>
+                    </div>
+                    <div>
+                        <p class="text-lg font-bold text-blue-400" id="previewFat">-</p>
+                        <p class="text-xs text-gray-500">Fett (g)</p>
+                    </div>
+                </div>
+            </div>
+            <button type="button" onclick="saveGoals()" class="w-full bg-accent-600 hover:bg-accent-700 text-white font-medium py-3 rounded-xl transition">Ziele speichern</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Entry Modal -->
 <div id="addModal" class="modal-overlay hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="modal-content bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div class="flex items-center justify-between mb-6">
@@ -84,47 +182,50 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Datum</label>
-                    <input type="date" id="date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+                    <input type="date" id="date" required title="Datum" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Mahlzeit</label>
-                    <select id="meal" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+                    <select id="meal" required title="Mahlzeit" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                         <option value="">Wahlen...</option>
-                        <option value="Frühstück">Frühstuck</option>
+                        <option value="Frühstück">Frühstück</option>
                         <option value="Mittagessen">Mittagessen</option>
                         <option value="Abendessen">Abendessen</option>
                         <option value="Snack">Snack</option>
                     </select>
                 </div>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Lebensmittel</label>
+                <input type="text" id="food" required placeholder="z.B. Haferflocken mit Milch" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+            </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Lebensmittel</label>
-                    <input type="text" id="food" required placeholder="z.B. Haferflocken" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
-                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Menge (g)</label>
                     <input type="number" id="amount" step="0.1" min="0.1" required placeholder="z.B. 100" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Kalorien (kcal)</label>
                     <input type="number" id="calories" step="0.1" min="0" required placeholder="z.B. 350" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
+            </div>
+            <!-- Collapsible macro details -->
+            <button type="button" onclick="document.getElementById('macroDetails').classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180')" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition">
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                Makros manuell eingeben (optional)
+            </button>
+            <div id="macroDetails" class="hidden grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Protein (g)</label>
-                    <input type="number" id="protein" step="0.1" min="0" value="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+                    <input type="number" id="protein" step="0.1" min="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Kohlenhydrate (g)</label>
-                    <input type="number" id="carbs" step="0.1" min="0" value="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Carbs (g)</label>
+                    <input type="number" id="carbs" step="0.1" min="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Fett (g)</label>
-                    <input type="number" id="fat" step="0.1" min="0" value="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
+                    <input type="number" id="fat" step="0.1" min="0" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-accent-500 outline-none">
                 </div>
             </div>
             <div>
@@ -138,26 +239,114 @@
 
 <script>
     const API_URL = '/calories';
+
+    // Macro ratio presets: { protein%, carbs%, fat% }
+    const MACRO_RATIOS = {
+        ausgewogen:    { p: 0.20, c: 0.50, f: 0.30 },
+        abnehmen:      { p: 0.30, c: 0.40, f: 0.30 },
+        muskelaufbau:  { p: 0.30, c: 0.45, f: 0.25 },
+        lowcarb:       { p: 0.30, c: 0.25, f: 0.45 },
+        keto:          { p: 0.20, c: 0.05, f: 0.75 }
+    };
+
+    // Load goals from localStorage
+    let goals = JSON.parse(localStorage.getItem('calGoals') || '{}');
+
+    function getDefaultGoals() {
+        return { calories: 2000, type: 'ausgewogen' };
+    }
+
+    function getGoals() {
+        return { ...getDefaultGoals(), ...goals };
+    }
+
+    function calcMacros(calories, type) {
+        const ratio = MACRO_RATIOS[type] || MACRO_RATIOS.ausgewogen;
+        return {
+            protein: Math.round(calories * ratio.p / 4),
+            carbs:   Math.round(calories * ratio.c / 4),
+            fat:     Math.round(calories * ratio.f / 9)
+        };
+    }
+
+    function updateGoalDisplay() {
+        const g = getGoals();
+        const m = calcMacros(g.calories, g.type);
+        document.getElementById('goalCalDisplay').textContent = g.calories;
+        document.getElementById('goalProtDisplay').textContent = m.protein;
+        document.getElementById('goalCarbDisplay').textContent = m.carbs;
+        document.getElementById('goalFatDisplay').textContent = m.fat;
+    }
+
+    function previewMacros() {
+        const cal = parseInt(document.getElementById('goalCalInput').value) || 2000;
+        const type = document.getElementById('goalTypeInput').value;
+        const m = calcMacros(cal, type);
+        document.getElementById('previewProt').textContent = m.protein;
+        document.getElementById('previewCarb').textContent = m.carbs;
+        document.getElementById('previewFat').textContent = m.fat;
+    }
+
+    function saveGoals() {
+        const cal = parseInt(document.getElementById('goalCalInput').value) || 2000;
+        const type = document.getElementById('goalTypeInput').value;
+        goals = { calories: cal, type: type };
+        localStorage.setItem('calGoals', JSON.stringify(goals));
+        document.getElementById('goalModal').classList.add('hidden');
+        updateGoalDisplay();
+        loadTodayData();
+    }
+
+    document.getElementById('goalCalInput').addEventListener('input', previewMacros);
+    document.getElementById('goalTypeInput').addEventListener('change', previewMacros);
+
+    // Populate goal modal on open
+    document.querySelector('[onclick*="goalModal"]').addEventListener('click', () => {
+        const g = getGoals();
+        document.getElementById('goalCalInput').value = g.calories;
+        document.getElementById('goalTypeInput').value = g.type;
+        previewMacros();
+    });
+
     document.getElementById('date').valueAsDate = new Date();
 
     async function loadTodayData() {
         try {
-            const goal = parseInt(document.getElementById('calorieGoal').value);
+            const g = getGoals();
+            const m = calcMacros(g.calories, g.type);
             const response = await fetch(`${API_URL}/today`);
             const data = await response.json();
+
+            const remaining = (consumed, goal) => {
+                const diff = goal - consumed;
+                if (diff > 0) return `<span class="text-gray-500">${diff} verbleibend</span>`;
+                return `<span class="text-red-400">${Math.abs(diff)} druber</span>`;
+            };
 
             document.getElementById('todayCalories').textContent = `${data.total_calories} kcal`;
             document.getElementById('todayProtein').textContent = `${data.total_protein} g`;
             document.getElementById('todayCarbs').textContent = `${data.total_carbs} g`;
             document.getElementById('todayFat').textContent = `${data.total_fat} g`;
 
-            const calProgress = Math.min((data.total_calories / goal) * 100, 100);
-            document.getElementById('calorieProgress').style.width = `${calProgress}%`;
+            document.getElementById('calRemaining').innerHTML = remaining(data.total_calories, g.calories);
+            document.getElementById('protRemaining').innerHTML = remaining(data.total_protein, m.protein);
+            document.getElementById('carbRemaining').innerHTML = remaining(data.total_carbs, m.carbs);
+            document.getElementById('fatRemaining').innerHTML = remaining(data.total_fat, m.fat);
 
-            document.getElementById('proteinBar').style.width = `${Math.min((data.total_protein / 150) * 100, 100)}%`;
-            document.getElementById('carbsBar').style.width = `${Math.min((data.total_carbs / 200) * 100, 100)}%`;
-            document.getElementById('fatBar').style.width = `${Math.min((data.total_fat / 65) * 100, 100)}%`;
+            // Progress bars
+            const pct = (v, g) => Math.min((v / g) * 100, 100);
+            document.getElementById('calorieProgress').style.width = `${pct(data.total_calories, g.calories)}%`;
+            document.getElementById('proteinBar').style.width = `${pct(data.total_protein, m.protein)}%`;
+            document.getElementById('carbsBar').style.width = `${pct(data.total_carbs, m.carbs)}%`;
+            document.getElementById('fatBar').style.width = `${pct(data.total_fat, m.fat)}%`;
 
+            // Progress labels
+            document.getElementById('calProgressLabel').textContent = `${data.total_calories} / ${g.calories} kcal`;
+            document.getElementById('protProgressLabel').textContent = `${data.total_protein} / ${m.protein} g`;
+            document.getElementById('carbProgressLabel').textContent = `${data.total_carbs} / ${m.carbs} g`;
+            document.getElementById('fatProgressLabel').textContent = `${data.total_fat} / ${m.fat} g`;
+
+            // Entries list
             const list = document.getElementById('entriesList');
             const empty = document.getElementById('emptyState');
             list.innerHTML = '';
@@ -184,7 +373,7 @@
                                 <p class="text-sm text-gray-500">${entry.amount}g · ${entry.calories} kcal · P:${entry.protein} C:${entry.carbs} F:${entry.fat}</p>
                             </div>
                         </div>
-                        <button type="button" onclick="deleteEntry(${entry.id})" class="text-gray-600 hover:text-red-400 transition shrink-0" aria-label="Löschen">
+                        <button type="button" onclick="deleteEntry(${entry.id})" class="text-gray-600 hover:text-red-400 transition shrink-0" aria-label="Loschen">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>`;
                     list.appendChild(card);
@@ -203,9 +392,9 @@
             food: document.getElementById('food').value,
             amount: parseFloat(document.getElementById('amount').value),
             calories: parseFloat(document.getElementById('calories').value),
-            protein: parseFloat(document.getElementById('protein').value),
-            carbs: parseFloat(document.getElementById('carbs').value),
-            fat: parseFloat(document.getElementById('fat').value),
+            protein: parseFloat(document.getElementById('protein')?.value || 0),
+            carbs:   parseFloat(document.getElementById('carbs')?.value || 0),
+            fat:     parseFloat(document.getElementById('fat')?.value || 0),
             note: document.getElementById('note').value || null
         };
         try {
@@ -219,6 +408,9 @@
                 document.getElementById('date').valueAsDate = new Date();
                 document.getElementById('addModal').classList.add('hidden');
                 loadTodayData();
+            } else {
+                const err = await response.json();
+                alert('Fehler: ' + (err.detail || 'Unbekannter Fehler'));
             }
         } catch (error) {
             console.error(error);
@@ -235,7 +427,7 @@
         }
     }
 
-    document.getElementById('calorieGoal').addEventListener('change', loadTodayData);
+    updateGoalDisplay();
     loadTodayData();
 </script>
 {% endblock %}
